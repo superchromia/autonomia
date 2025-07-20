@@ -1,5 +1,6 @@
 databases:
   - name: autonomia-postgres
+    region: frankfurt
     databaseName: telegram
     plan: free
 
