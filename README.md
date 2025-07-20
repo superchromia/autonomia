@@ -42,7 +42,7 @@ Telegram bot for LLM-based processing, analyzing and answering messages using Fa
 
 3. **Run the Application**
    ```bash
-   uvicorn app:app --host 0.0.0.0 --port 5000 --reload
+   poetry run uvicorn app:app --host 0.0.0.0 --port 5000 --reload
    ```
 
 **Note:** The application will automatically create the database if it doesn't exist during startup.

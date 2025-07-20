@@ -8,7 +8,7 @@ version = "0.1.0"
 description = "Telegram bot for LLM-based processing, analyzing and answering messages"
 authors = ["Mia Grigoreva <mia@superchromia.com>"]
 readme = "README.md"
-packages = [{include = "."}]
+package-mode = false
 
 [tool.poetry.dependencies]
 python = "^3.11"
