@@ -1,5 +1,6 @@
-import logging
 import os
+import re
+from urllib.parse import urlparse, urlunparse
 
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
@@ -14,14 +15,16 @@ SESSION = os.environ.get("TELETHON_SESSION", "anon")
 SESSION_STRING = os.environ.get("TELETHON_SESSION_STRING")
 PHONE_NUMBER = os.environ.get("PHONE_NUMBER")
 
-logger = logging.getLogger("dependency")
-logger.info(f"DATABASE_URL: {DATABASE_URL}")
 
-# Convert DATABASE_URL for Render (if needed)
-if DATABASE_URL.startswith("psycopg2://"):
-    DATABASE_URL = DATABASE_URL.replace(
-        "psycopg2://", "postgresql+asyncpg://", 1
-    )
+print(f"DATABASE_URL: {masked_url}")
+
+# Fix DATABASE_URL to use correct async driver if needed
+if DATABASE_URL:
+    parsed = urlparse(DATABASE_URL)
+    if parsed.scheme != "postgresql+asyncpg":
+        # Reconstruct URL with correct scheme
+        DATABASE_URL = urlunparse(("postgresql+asyncpg",) + parsed[1:])
+
 
 engine = create_async_engine(DATABASE_URL, echo=True, future=True)
 async_session = sessionmaker(
