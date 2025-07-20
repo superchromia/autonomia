@@ -18,8 +18,6 @@ import os
 # add your model's MetaData object here
 # for 'autogenerate' support
 from models.base import Base
-from models.chat_config import ChatConfig
-from models.event import Event
 
 target_metadata = Base.metadata
 

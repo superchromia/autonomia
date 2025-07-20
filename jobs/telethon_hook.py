@@ -1,13 +1,6 @@
 import logging
-from datetime import datetime, timedelta, timezone
 
 from telethon import events
-from telethon.tl.functions.messages import SetTypingRequest
-from telethon.tl.types import (
-    MessageEntityMention,
-    MessageEntityMentionName,
-    SendMessageTypingAction,
-)
 
 from dependency import dependency
 from repositories.event_repository import EventRepository

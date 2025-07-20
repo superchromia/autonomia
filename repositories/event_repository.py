@@ -1,11 +1,11 @@
 import base64
 from datetime import datetime
+from typing import Any
 
 from sqlalchemy import func, select
-from sqlalchemy import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 from telethon.events import NewMessage
-from typing import Any
+
 from models.event import Event
 
 
@@ -17,8 +17,8 @@ def convert_obj(obj: Any) -> Any:
     elif isinstance(obj, datetime):
         return obj.isoformat()
     elif isinstance(obj, bytes):
-        return base64.b64encode(obj).decode('ascii')
-    elif hasattr(obj, 'to_dict'):
+        return base64.b64encode(obj).decode("ascii")
+    elif hasattr(obj, "to_dict"):
         return convert_obj(obj.to_dict())
     else:
         return obj
@@ -36,11 +36,10 @@ class EventRepository:
             event_json=convert_obj(event.to_dict())
         )
         self.session.add(event_obj)
-        return event_obj 
+        return event_obj
 
     async def get_last_message_id(self, chat_id):
         result = await self.session.execute(
             select(func.max(Event.message_id)).where(Event.chat_id == chat_id)
         )
         return result.scalar() or 0
-        

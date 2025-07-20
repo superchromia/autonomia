@@ -8,7 +8,6 @@ from fastapi import FastAPI
 
 from api import v1_router
 from dependency import dependency
-from jobs import telethon_hook
 from jobs.fetch_messages import fetch_all_messages_job
 from models.base import Base
 

@@ -1,7 +1,7 @@
-from sqlalchemy import Column, BigInteger, DateTime, JSON, PrimaryKeyConstraint
-from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy import JSON, BigInteger, Column, DateTime, PrimaryKeyConstraint
 
 from models.base import Base
+
 
 class Event(Base):
     __tablename__ = "events"
@@ -12,5 +12,5 @@ class Event(Base):
     event_json = Column(JSON, nullable=False)
 
     __table_args__ = (
-        PrimaryKeyConstraint('chat_id', 'message_id'),
-    ) 
+        PrimaryKeyConstraint("chat_id", "message_id"),
+    )

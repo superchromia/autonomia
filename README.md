@@ -137,6 +137,20 @@ For cloud deployment, you need to use StringSession instead of session files:
 ### Environment Setup
 The project uses environment variables for configuration. See the `.env` example above for required variables.
 
+### Code Quality
+The project uses RUFF for linting and formatting:
+
+```bash
+# Check and fix linting issues
+python -m ruff check --fix .
+
+# Format code
+python -m ruff format .
+
+# Or use the provided script
+./scripts/lint.sh
+```
+
 ### Database Migrations
 Migrations are handled automatically by Alembic during application startup.
 

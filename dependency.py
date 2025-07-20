@@ -13,7 +13,6 @@ SESSION = os.environ.get("TELETHON_SESSION", "anon")
 SESSION_STRING = os.environ.get("TELETHON_SESSION_STRING")
 PHONE_NUMBER = os.environ.get("PHONE_NUMBER")
 
-print(SESSION_STRING)
 
 # Convert DATABASE_URL for Render (if needed)
 if DATABASE_URL.startswith("postgres://"):
