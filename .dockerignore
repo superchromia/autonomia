@@ -74,3 +74,6 @@ README.md
 tests/
 test_*
 *_test.py 
+
+# dev container
+.devcontainer/

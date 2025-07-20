@@ -1,1 +1,2 @@
 from .chat_config_repository import ChatConfigRepository 
+from .event_repository import EventRepository

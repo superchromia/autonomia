@@ -1,7 +1,6 @@
 from logging.config import fileConfig
 
-from sqlalchemy import engine_from_config
-from sqlalchemy import pool
+from sqlalchemy import engine_from_config, pool
 
 from alembic import context
 
@@ -15,20 +14,67 @@ if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
 import os
+
 # add your model's MetaData object here
 # for 'autogenerate' support
 from models.base import Base
-from models.user import User
-from models.user_context import UserContext
-from models.message import Message
-from models.channel import Channel
-from models.event import Event
 from models.chat_config import ChatConfig
+from models.event import Event
+
 target_metadata = Base.metadata
 
-# Получаем URL базы данных из переменных окружения
+
+# Get database URL from environment variables
 def get_database_url():
-    return os.environ.get('DATABASE_URL', 'postgresql+asyncpg://postgres:postgres@localhost:5432/telegram')
+    return os.environ.get(
+        "DATABASE_URL", "postgresql+asyncpg://postgres:postgres@localhost:5432/telegram"
+    )
+
+
+def create_database_if_not_exists():
+    """Create database if it doesn't exist"""
+    from urllib.parse import urlparse
+
+    import psycopg2
+
+    try:
+        url = get_database_url()
+        parsed_url = urlparse(url)
+
+        # Connect to postgres database
+        conn = psycopg2.connect(
+            host=parsed_url.hostname,
+            port=parsed_url.port,
+            user=parsed_url.username,
+            password=parsed_url.password,
+            database="postgres",
+        )
+
+        # Set autocommit to avoid transaction block issues
+        conn.autocommit = True
+
+        cursor = conn.cursor()
+
+        # Check if database exists
+        cursor.execute(
+            "SELECT 1 FROM pg_database WHERE datname = %s", (parsed_url.path[1:],)
+        )
+
+        if not cursor.fetchone():
+            print(f"Creating database: {parsed_url.path[1:]}")
+            # Create database
+            cursor.execute(f'CREATE DATABASE "{parsed_url.path[1:]}"')
+            print("Database created successfully")
+        else:
+            print("Database already exists")
+
+        cursor.close()
+        conn.close()
+
+    except Exception as e:
+        print(f"Could not create database automatically: {e}")
+        print("Continuing with existing database connection...")
+
 
 # other values from the config, defined by the needs of env.py,
 # can be acquired:
@@ -48,11 +94,17 @@ def run_migrations_offline() -> None:
     script output.
 
     """
+    # Create database if it doesn't exist
+    try:
+        create_database_if_not_exists()
+    except Exception as e:
+        print(f"Database creation failed: {e}")
+
     url = get_database_url()
-    # Для асинхронной базы данных используем синхронный URL
+    # For async database use sync URL
     if url.startswith("postgresql+asyncpg://"):
         url = url.replace("postgresql+asyncpg://", "postgresql://")
-    
+
     context.configure(
         url=url,
         target_metadata=target_metadata,
@@ -71,15 +123,21 @@ def run_migrations_online() -> None:
     and associate a connection with the context.
 
     """
-    # Получаем URL из переменных окружения
+    # Create database if it doesn't exist
+    try:
+        create_database_if_not_exists()
+    except Exception as e:
+        print(f"Database creation failed: {e}")
+
+    # Get URL from environment variables
     url = get_database_url()
-    # Для асинхронной базы данных используем синхронный URL
+    # For async database use sync URL
     if url.startswith("postgresql+asyncpg://"):
         url = url.replace("postgresql+asyncpg://", "postgresql://")
-    
-    # Создаем конфигурацию с URL из переменных окружения
+
+    # Create configuration with URL from environment variables
     config.set_main_option("sqlalchemy.url", url)
-    
+
     connectable = engine_from_config(
         config.get_section(config.config_ini_section, {}),
         prefix="sqlalchemy.",
@@ -87,9 +145,7 @@ def run_migrations_online() -> None:
     )
 
     with connectable.connect() as connection:
-        context.configure(
-            connection=connection, target_metadata=target_metadata
-        )
+        context.configure(connection=connection, target_metadata=target_metadata)
 
         with context.begin_transaction():
             context.run_migrations()

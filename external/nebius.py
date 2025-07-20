@@ -64,5 +64,5 @@ class NebiusAIStudioClient:
             extra_body=None,
             response_format=None,
         )
-        # Вернуть текст первого ответа
+        # Return the text of the first response
         return data["choices"][0]["message"]["content"]

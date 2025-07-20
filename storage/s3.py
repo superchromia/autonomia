@@ -17,7 +17,7 @@ class S3StorageBackend(StorageBackend):
 
     async def save_image(self, file_bytes: bytes, file_name: str = None) -> str:
         hashed_name = self.hash_filename(file_bytes)
-        # Проверяем, есть ли уже такой объект в бакете
+        # Check if such object already exists in the bucket
         try:
             self.s3.head_object(Bucket=self.bucket_name, Key=hashed_name)
             return self.base_url + hashed_name

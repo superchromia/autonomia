@@ -1,99 +1,149 @@
-# Superchromia.com Telegram Bot
+# Autonomia Telegram Bot
 
-Telegram бот для обработки и анализа сообщений с использованием FastAPI и PostgreSQL.
+Telegram bot for LLM-based processing, analyzing and answering messages using FastAPI and PostgreSQL.
 
-## Деплой на Render.com
+## Features
 
-### Автоматический деплой
+- **Telegram Integration**: Real-time message processing using Telethon
+- **LLM Processing**: Integration with Nebius AI Studio for intelligent responses
+- **Database Storage**: PostgreSQL with Alembic migrations for data persistence
+- **Cloud Ready**: Optimized for deployment on Render with automatic database creation
+- **Health Monitoring**: Built-in health check endpoints
 
-1. **Подключите репозиторий к Render**
-   - Зайдите на [render.com](https://render.com)
-   - Создайте новый Web Service
-   - Подключите ваш GitHub репозиторий
+## Quick Start
 
-2. **Настройте переменные окружения в Render Dashboard:**
+### Using Dev Containers (Recommended)
+
+1. **Open in Dev Container**
+   - Use VS Code with Dev Containers extension
+   - The project includes `.devcontainer` configuration
+
+2. **Start the Application**
+   ```bash
+   uvicorn app:app --host 0.0.0.0 --port 5000 --reload
    ```
+
+### Local Development
+
+1. **Install Dependencies**
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+2. **Set Environment Variables**
+   Create a `.env` file:
+   ```env
+   DATABASE_URL=postgresql+asyncpg://postgres:postgres@localhost:5432/telegram
    TELEGRAM_API_ID=your_api_id
    TELEGRAM_API_HASH=your_api_hash
-   TELETHON_SESSION=anon
-   AWS_ACCESS_KEY_ID=your_aws_key
-   AWS_SECRET_ACCESS_KEY=your_aws_secret
+   TELETHON_SESSION=autonomia
+   NEBIUS_STUDIO_API_KEY=your_nebius_key
    ```
 
-3. **Настройки сервиса:**
+3. **Run the Application**
+   ```bash
+   uvicorn app:app --host 0.0.0.0 --port 5000 --reload
+   ```
+
+**Note:** The application will automatically create the database if it doesn't exist during startup.
+
+## Deployment on Render
+
+### Automatic Deployment
+
+1. **Connect Repository**
+   - Go to [render.com](https://render.com)
+   - Create a new Web Service
+   - Connect your GitHub repository
+
+2. **Configure Environment Variables**
+   ```env
+   TELEGRAM_API_ID=your_api_id
+   TELEGRAM_API_HASH=your_api_hash
+   TELETHON_SESSION=autonomia
+   TELETHON_SESSION_STRING=your_string_session
+   NEBIUS_STUDIO_API_KEY=your_nebius_key
+   ```
+
+3. **Service Settings**
    - **Build Command:** `pip install -r requirements.txt`
    - **Start Command:** `uvicorn app:app --host 0.0.0.0 --port $PORT`
-   - **Health Check Path:** `/health`
+   - **Health Check Path:** `/api/v1/health`
 
-### Создание базы данных
+### Database Setup
 
-1. Создайте PostgreSQL базу данных в Render
-2. Скопируйте Connection String
-3. Добавьте переменную окружения `DATABASE_URL` с этим значением
+The PostgreSQL database is automatically created and configured through Render's database service.
 
-### Применение миграций
+### StringSession Setup for Telegram
 
-После деплоя примените миграции через Render Shell:
+For cloud deployment, you need to use StringSession instead of session files:
 
-```bash
-# В Render Dashboard -> ваш сервис -> Shell
-alembic upgrade head
-```
+1. **Create StringSession**
+   ```bash
+   python convert_session.py
+   ```
 
-## Локальная разработка
+2. **Follow the prompts** to authenticate with Telegram
 
-### Установка зависимостей
-
-```bash
-pip install -r requirements.txt
-```
-
-### Настройка переменных окружения
-
-Создайте файл `.env`:
-
-```env
-DATABASE_URL=postgresql+asyncpg://postgres:postgres@localhost:5432/telegram
-TELEGRAM_API_ID=your_api_id
-TELEGRAM_API_HASH=your_api_hash
-TELETHON_SESSION=anon
-AWS_ACCESS_KEY_ID=your_aws_key
-AWS_SECRET_ACCESS_KEY=your_aws_secret
-```
-
-### Запуск
-
-```bash
-# Запуск с Docker Compose
-docker-compose up -d
-
-# Или локально
-uvicorn app:app --host 0.0.0.0 --port 5000 --reload
-```
+3. **Add the generated string** to `TELETHON_SESSION_STRING` environment variable in Render
 
 ## API Endpoints
 
-- `GET /health` - проверка здоровья сервиса
-- `GET /api/v1/messages` - получение сообщений
-- `POST /api/v1/summarize` - суммаризация сообщений
+- `GET /api/v1/health` - Service health check
+- Additional endpoints for message processing and analysis
 
-## Структура проекта
+## Project Structure
 
 ```
-├── alembic/              # Миграции базы данных
+├── alembic/              # Database migrations
 ├── api/                  # API endpoints
-├── jobs/                 # Фоновые задачи
-├── models/               # SQLAlchemy модели
-├── repositories/         # Репозитории для работы с БД
-├── storage/              # Хранилище файлов
-├── app.py               # Основное приложение
-├── render.yaml          # Конфигурация Render
-└── requirements.txt     # Python зависимости
+│   └── v1/              # Version 1 API
+├── jobs/                 # Background tasks
+├── models/               # SQLAlchemy models
+├── repositories/         # Database repositories
+├── storage/              # File storage (S3 support)
+├── external/             # External service integrations
+├── app.py               # Main application
+├── dependency.py        # Dependency injection
+├── render.yaml          # Render configuration
+└── requirements.txt     # Python dependencies
 ```
 
-## Особенности для Render
+## Key Components
 
-- Приложение автоматически адаптируется к переменной `$PORT`
-- Health check endpoint для мониторинга
-- Безопасная инициализация Telegram клиента
-- Оптимизированный Dockerfile для продакшена 
+### Models
+- `Event` - Telegram message events
+- `ChatConfig` - Chat configuration settings
+
+### Services
+- **Telegram Client** - Handles Telegram API communication
+- **Nebius AI** - LLM processing for message analysis
+- **Database** - PostgreSQL with automatic migration support
+
+### Features
+- **Automatic Database Creation** - Creates database if it doesn't exist
+- **StringSession Support** - Secure session management for cloud
+- **Health Monitoring** - Built-in health checks
+- **Background Jobs** - Automated message processing
+
+## Development
+
+### Prerequisites
+- Python 3.11+
+- PostgreSQL
+- Telegram API credentials
+- Nebius AI Studio API key
+
+### Environment Setup
+The project uses environment variables for configuration. See the `.env` example above for required variables.
+
+### Database Migrations
+Migrations are handled automatically by Alembic during application startup.
+
+## Render Features
+
+- Application automatically adapts to the `$PORT` variable
+- Health check endpoint for monitoring
+- Secure Telegram client initialization
+- Optimized Dockerfile for production
+- Automatic database creation if it doesn't exist
