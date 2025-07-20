@@ -18,12 +18,6 @@ async def handler(event):
             try:
                 logger.info(f"Received: {event}")
                 await event_repo.save_event(event)
+                await event.message.mark_read()
             except Exception as e:
                 logger.exception(f"Failed to save event: {e}")
-            finally:
-                # Mark message as read
-                try:
-                    await event.message.mark_read()
-                    logger.debug(f"Marked message {event.message.id} as read")
-                except Exception as e:
-                    logger.warning(f"Failed to mark message as read: {e}")
