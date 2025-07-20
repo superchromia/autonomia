@@ -16,7 +16,7 @@ SESSION_STRING = os.environ.get("TELETHON_SESSION_STRING")
 PHONE_NUMBER = os.environ.get("PHONE_NUMBER")
 
 
-print(f"DATABASE_URL: {masked_url}")
+print(f"DATABASE_URL: {DATABASE_URL}")
 
 # Fix DATABASE_URL to use correct async driver if needed
 if DATABASE_URL:
