@@ -18,7 +18,11 @@ async def fetch_all_messages_job():
         async with session.begin():
             repo = EventRepository(session)
             async for dialog in client.iter_dialogs():
-                logger.info(f"Processing channel: id={dialog.id}, title={dialog.title}")
+                logger.info(
+                    f"Processing channel: id={dialog.id}, title={dialog.title}"
+                )
                 last_id = await repo.get_last_message_id(dialog.id)
-                async for msg in client.iter_messages(entity=dialog, min_id=last_id):
+                async for msg in client.iter_messages(
+                    entity=dialog, min_id=last_id
+                ):
                     await repo.save_event(msg)

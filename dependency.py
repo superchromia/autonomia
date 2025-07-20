@@ -1,3 +1,4 @@
+import logging
 import os
 
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
@@ -13,13 +14,19 @@ SESSION = os.environ.get("TELETHON_SESSION", "anon")
 SESSION_STRING = os.environ.get("TELETHON_SESSION_STRING")
 PHONE_NUMBER = os.environ.get("PHONE_NUMBER")
 
+logger = logging.getLogger("dependency")
+logger.info(f"DATABASE_URL: {DATABASE_URL}")
 
 # Convert DATABASE_URL for Render (if needed)
 if DATABASE_URL.startswith("postgres://"):
-    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql+asyncpg://", 1)
+    DATABASE_URL = DATABASE_URL.replace(
+        "postgres://", "postgresql+asyncpg://", 1
+    )
 
 engine = create_async_engine(DATABASE_URL, echo=True, future=True)
-async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+async_session = sessionmaker(
+    engine, expire_on_commit=False, class_=AsyncSession
+)
 
 
 class Dependency:

@@ -23,6 +23,7 @@ def convert_obj(obj: Any) -> Any:
     else:
         return obj
 
+
 class EventRepository:
     def __init__(self, session: AsyncSession):
         self.session = session
@@ -33,7 +34,7 @@ class EventRepository:
             sender_id=event.sender_id,
             message_id=event._message_id,
             utc_dttm=event.date.replace(tzinfo=None),
-            event_json=convert_obj(event.to_dict())
+            event_json=convert_obj(event.to_dict()),
         )
         self.session.add(event_obj)
         return event_obj

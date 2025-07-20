@@ -1,8 +1,13 @@
+import os
 from logging.config import fileConfig
 
 from sqlalchemy import engine_from_config, pool
 
 from alembic import context
+
+# add your model's MetaData object here
+# for 'autogenerate' support
+from models.base import Base
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
@@ -13,19 +18,14 @@ config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-import os
-
-# add your model's MetaData object here
-# for 'autogenerate' support
-from models.base import Base
-
 target_metadata = Base.metadata
 
 
 # Get database URL from environment variables
 def get_database_url():
     return os.environ.get(
-        "DATABASE_URL", "postgresql+asyncpg://postgres:postgres@localhost:5432/telegram"
+        "DATABASE_URL",
+        "postgresql+asyncpg://postgres:postgres@localhost:5432/telegram",
     )
 
 
@@ -55,7 +55,8 @@ def create_database_if_not_exists():
 
         # Check if database exists
         cursor.execute(
-            "SELECT 1 FROM pg_database WHERE datname = %s", (parsed_url.path[1:],)
+            "SELECT 1 FROM pg_database WHERE datname = %s",
+            (parsed_url.path[1:],),
         )
 
         if not cursor.fetchone():
@@ -143,7 +144,9 @@ def run_migrations_online() -> None:
     )
 
     with connectable.connect() as connection:
-        context.configure(connection=connection, target_metadata=target_metadata)
+        context.configure(
+            connection=connection, target_metadata=target_metadata
+        )
 
         with context.begin_transaction():
             context.run_migrations()

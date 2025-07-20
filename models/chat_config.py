@@ -12,6 +12,8 @@ class ChatConfig(Base):
     answer_threshold = Column(Float, nullable=True)
 
     def __repr__(self):
-        return (f"<ChatConfig(chat_id={self.chat_id}, save_messages={self.save_messages}, "
-                f"load_from_date={self.load_from_date}, system_prompt={self.system_prompt}, "
-                f"answer_threshold={self.answer_threshold})>")
+        return (
+            f"<ChatConfig(chat_id={self.chat_id}, save_messages={self.save_messages}, "
+            f"load_from_date={self.load_from_date}, system_prompt={self.system_prompt}, "
+            f"answer_threshold={self.answer_threshold})>"
+        )

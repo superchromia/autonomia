@@ -56,7 +56,9 @@ async def create_string_session():
         string_session = client.session.save()
 
         logger.info("=" * 60)
-        logger.info("STRING SESSION (copy this string to environment variable):")
+        logger.info(
+            "STRING SESSION (copy this string to environment variable):"
+        )
         logger.info("=" * 60)
         logger.info(string_session)
         logger.info("=" * 60)
