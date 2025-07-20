@@ -18,9 +18,9 @@ logger = logging.getLogger("dependency")
 logger.info(f"DATABASE_URL: {DATABASE_URL}")
 
 # Convert DATABASE_URL for Render (if needed)
-if DATABASE_URL.startswith("postgres://"):
+if DATABASE_URL.startswith("psycopg2://"):
     DATABASE_URL = DATABASE_URL.replace(
-        "postgres://", "postgresql+asyncpg://", 1
+        "psycopg2://", "postgresql+asyncpg://", 1
     )
 
 engine = create_async_engine(DATABASE_URL, echo=True, future=True)
