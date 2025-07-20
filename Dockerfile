@@ -21,7 +21,8 @@ RUN chown -R app:app /app
 # Switch to app user
 USER app
 
-EXPOSE 5000
+# Default render port
+EXPOSE 10000
 
 # Production command
-CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "5000"] 
+CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "10000"] 
