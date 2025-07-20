@@ -6,6 +6,8 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.interval import IntervalTrigger
 from fastapi import FastAPI
 
+# Telethon hook is automatically registered when imported
+import jobs.telethon_hook  # noqa: F401
 from api import v1_router
 from dependency import dependency
 from jobs.fetch_messages import fetch_all_messages_job
@@ -43,7 +45,9 @@ async def lifespan(app: FastAPI):
     if dependency.telegram_client:
         loop.create_task(start_telethon())
     else:
-        logger.warning("Telegram client not initialized - API credentials not provided")
+        logger.warning(
+            "Telegram client not initialized - API credentials not provided"
+        )
 
     yield
 
