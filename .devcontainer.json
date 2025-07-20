@@ -1,0 +1,16 @@
+{
+    "name": "Superchromia",
+    "dockerComposeFile": [
+        "./docker-compose.yml"
+    ],
+    "service": "app",
+    "workspaceFolder": "/app",
+    "settings": {
+      "python.defaultInterpreterPath": "/usr/local/bin/python"
+    },
+    "extensions": [
+      "ms-python.python",
+      "ms-azuretools.vscode-docker",
+      "ric-v.postgres-explorer"
+    ]
+  }
