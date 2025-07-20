@@ -1,3 +1,41 @@
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry]
+name = "autonomia"
+version = "0.1.0"
+description = "Telegram bot for LLM-based processing, analyzing and answering messages"
+authors = ["Mia Grigoreva <mia@superchromia.com>"]
+readme = "README.md"
+packages = [{include = "."}]
+
+[tool.poetry.dependencies]
+python = "^3.11"
+fastapi = "^0.116.1"
+uvicorn = "^0.35.0"
+sqlalchemy = "^2.0.41"
+alembic = "^1.16.4"
+asyncpg = "^0.30.0"
+psycopg2-binary = "^2.9.10"
+telethon = "^1.40.0"
+aiohttp = "^3.12.14"
+apscheduler = "^3.11.0"
+boto3 = "^1.39.4"
+openai = "^1.96.0"
+pillow = "^11.3.0"
+requests = "^2.32.4"
+tqdm = "^4.67.1"
+
+[tool.poetry.group.dev.dependencies]
+ruff = "^0.8.1"
+pytest = "^8.0.0"
+pytest-asyncio = "^0.24.0"
+black = "^24.0.0"
+
+[tool.poetry.scripts]
+autonomia = "app:main"
+
 [tool.ruff]
 # Same as Black.
 line-length = 79
@@ -60,4 +98,8 @@ max-complexity = 10
 known-first-party = ["api", "jobs", "models", "repositories", "storage", "external"]
 
 [tool.ruff.lint.per-file-ignores]
-"__init__.py" = ["F401"] 
+"__init__.py" = ["F401"]
+
+[tool.black]
+line-length = 79
+target-version = ['py311'] 

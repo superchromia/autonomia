@@ -66,7 +66,7 @@ Telegram bot for LLM-based processing, analyzing and answering messages using Fa
    ```
 
 3. **Service Settings**
-   - **Build Command:** `pip install -r requirements.txt`
+   - **Build Command:** `poetry install --no-dev --no-interaction --no-ansi`
    - **Start Command:** `uvicorn app:app --host 0.0.0.0 --port $PORT`
    - **Health Check Path:** `/api/v1/health`
 
@@ -106,7 +106,7 @@ For cloud deployment, you need to use StringSession instead of session files:
 ├── app.py               # Main application
 ├── dependency.py        # Dependency injection
 ├── render.yaml          # Render configuration
-└── requirements.txt     # Python dependencies
+└── pyproject.toml      # Poetry configuration and dependencies
 ```
 
 ## Key Components
@@ -142,13 +142,13 @@ The project uses RUFF for linting and formatting:
 
 ```bash
 # Check and fix linting issues
-python -m ruff check --fix .
+poetry run ruff check --fix .
 
 # Format code
-python -m ruff format .
+poetry run ruff format .
 
-# Or use the provided script
-./scripts/lint.sh
+# Run tests
+poetry run pytest
 ```
 
 ### Database Migrations

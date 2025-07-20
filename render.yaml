@@ -26,5 +26,5 @@ services:
         sync: false
       - key: NEBIUS_STUDIO_API_KEY
         sync: false
-        
+
     healthCheckPath: /api/v1/health

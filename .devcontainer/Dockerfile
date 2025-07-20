@@ -4,16 +4,23 @@ FROM python:3.11-slim
 RUN apt-get update && apt-get install -y \
     gcc \
     git \
+    curl \
     && rm -rf /var/lib/apt/lists/*
+
+# Install Poetry
+RUN curl -sSL https://install.python-poetry.org | python3 -
 
 # Create working user
 RUN useradd --create-home --shell /bin/bash app
 
 WORKDIR /app
 
-# Copy and install dependencies
-COPY requirements.txt ./
-RUN pip install --no-cache-dir -r requirements.txt
+# Copy poetry files
+COPY pyproject.toml poetry.lock* ./
+
+# Install dependencies
+RUN poetry config virtualenvs.create false \
+    && poetry install --no-interaction --no-ansi
 
 # Change file ownership
 RUN chown -R app:app /app
