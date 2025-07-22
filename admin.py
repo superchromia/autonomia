@@ -128,18 +128,14 @@ class ChatConfigAdmin(ModelView, model=ChatConfig):
 
 
 class AdminAuth(AuthenticationBackend):
-    """Admin authentication backend"""
-
-    def __init__(self):
-        # Get credentials from config
-        self.username = config.admin_username
-        self.password = config.admin_password
-
     async def login(self, request: Request) -> bool:
         form = await request.form()
         username, password = form["username"], form["password"]
 
-        if username == self.username and password == self.password:
+        if (
+            username == config.admin_username
+            and password == config.admin_password
+        ):
             request.session.update({"admin_auth": True})
             return True
         return False
@@ -148,11 +144,14 @@ class AdminAuth(AuthenticationBackend):
         request.session.clear()
         return True
 
+    async def authenticate(self, request: Request) -> bool:
+        return request.session.get("admin_auth", False)
+
 
 def setup_admin(app, engine):
     """Setup admin panel with authentication"""
     # Create authentication backend
-    auth_backend = AdminAuth()
+    auth_backend = AdminAuth(secret_key=config.secret_key)
 
     # Create admin with authentication
     admin = Admin(

@@ -1,6 +1,7 @@
 from typing import Optional
 
-from pydantic import BaseSettings, Field, validator
+from pydantic import Field, validator
+from pydantic_settings import BaseSettings
 
 
 class Config(BaseSettings):
@@ -32,10 +33,9 @@ class Config(BaseSettings):
     telegram_api_hash: Optional[str] = Field(
         default=None, env="TELEGRAM_API_HASH", description="Telegram API Hash"
     )
-    telegram_session_name: str = Field(
-        default="superchromia_session",
-        env="TELEGRAM_SESSION_NAME",
-        description="Telegram session name",
+    telethon_session_string: str = Field(
+        env="TELETHON_SESSION_STRING",
+        description="Telegram session ",
     )
 
     # Security
@@ -98,6 +98,7 @@ class Config(BaseSettings):
         env_file = ".env"
         env_file_encoding = "utf-8"
         case_sensitive = False
+        extra = "ignore"
 
 
 # Create global config instance

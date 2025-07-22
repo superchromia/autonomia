@@ -52,6 +52,13 @@ scheduler = AsyncIOScheduler()
 # Add session middleware for admin authentication
 app.add_middleware(SessionMiddleware, secret_key=config.secret_key)
 
+
+@app.get("/")
+async def root():
+    """Root endpoint"""
+    return {"message": "Superchromia API is running", "version": "1.0.0"}
+
+
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",

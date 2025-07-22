@@ -41,7 +41,7 @@ class Dependency:
         config.validate_required_telegram_config()
 
         self.telegram_client = TelegramClient(
-            session=StringSession(config.telegram_session_name),
+            session=StringSession(config.telethon_session_string),
             api_id=int(config.telegram_api_id),
             api_hash=config.telegram_api_hash,
             sequential_updates=True,
