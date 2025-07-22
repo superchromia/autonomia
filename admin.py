@@ -120,6 +120,8 @@ class ChatConfigAdmin(ModelView, model=ChatConfig):
         ChatConfig.load_from_date,
     ]
 
+    form_include_pk = True
+
     column_default_sort = ("chat_id", True)
 
     can_create = True
