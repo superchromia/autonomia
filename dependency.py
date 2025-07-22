@@ -1,6 +1,5 @@
 import asyncio
 import logging
-import os
 from urllib.parse import urlparse, urlunparse
 
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
@@ -8,26 +7,19 @@ from sqlalchemy.orm import sessionmaker
 from telethon import TelegramClient
 from telethon.sessions import StringSession
 
-# Get environment variables with fallback values
-DATABASE_URL = os.environ.get("DATABASE_URL")
-API_ID = os.environ.get("TELEGRAM_API_ID")
-API_HASH = os.environ.get("TELEGRAM_API_HASH")
-SESSION = os.environ.get("TELETHON_SESSION", "anon")
-SESSION_STRING = os.environ.get("TELETHON_SESSION_STRING")
-PHONE_NUMBER = os.environ.get("PHONE_NUMBER")
-
+from config import config
 
 logger = logging.getLogger("dependency")
 
 # Fix DATABASE_URL to use correct async driver if needed
-if DATABASE_URL:
-    parsed = urlparse(DATABASE_URL)
-    if parsed.scheme != "postgresql+asyncpg":
-        # Reconstruct URL with correct scheme
-        DATABASE_URL = urlunparse(("postgresql+asyncpg",) + parsed[1:])
+database_url = config.database_url
+parsed = urlparse(database_url)
+if parsed.scheme != "postgresql+asyncpg":
+    # Reconstruct URL with correct scheme
+    database_url = urlunparse(("postgresql+asyncpg",) + parsed[1:])
 
 
-engine = create_async_engine(DATABASE_URL, echo=True, future=True)
+engine = create_async_engine(database_url, echo=True, future=True)
 async_session = sessionmaker(
     engine, expire_on_commit=False, class_=AsyncSession
 )
@@ -44,10 +36,14 @@ class Dependency:
     def __init__(self):
         self.engine = engine
         self.async_session = async_session
+
+        # Validate required Telegram config
+        config.validate_required_telegram_config()
+
         self.telegram_client = TelegramClient(
-            session=StringSession(SESSION_STRING),
-            api_id=int(API_ID),
-            api_hash=API_HASH,
+            session=StringSession(config.telegram_session_name),
+            api_id=int(config.telegram_api_id),
+            api_hash=config.telegram_api_hash,
             sequential_updates=True,
         )
 

@@ -1,5 +1,8 @@
 from sqladmin import Admin, ModelView
+from sqladmin.authentication import AuthenticationBackend
+from starlette.requests import Request
 
+from config import config
 from models.chat import Chat
 from models.chat_config import ChatConfig
 from models.user import User
@@ -124,9 +127,40 @@ class ChatConfigAdmin(ModelView, model=ChatConfig):
     can_delete = True
 
 
+class AdminAuth(AuthenticationBackend):
+    """Admin authentication backend"""
+
+    def __init__(self):
+        # Get credentials from config
+        self.username = config.admin_username
+        self.password = config.admin_password
+
+    async def login(self, request: Request) -> bool:
+        form = await request.form()
+        username, password = form["username"], form["password"]
+
+        if username == self.username and password == self.password:
+            request.session.update({"admin_auth": True})
+            return True
+        return False
+
+    async def logout(self, request: Request) -> bool:
+        request.session.clear()
+        return True
+
+
 def setup_admin(app, engine):
-    """Setup admin panel"""
-    admin = Admin(app, engine, title="Superchromia Admin")
+    """Setup admin panel with authentication"""
+    # Create authentication backend
+    auth_backend = AdminAuth()
+
+    # Create admin with authentication
+    admin = Admin(
+        app,
+        engine,
+        title="Superchromia Admin",
+        authentication_backend=auth_backend,
+    )
 
     # Add views
     admin.add_view(ChatAdmin)

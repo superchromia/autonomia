@@ -15,6 +15,16 @@ services:
         fromDatabase:
           name: autonomia-postgres
           property: connectionString
+
+      # Admin Panel Configuration
+      - key: ADMIN_USERNAME
+        value: admin
+      - key: ADMIN_PASSWORD
+        sync: false
+      - key: SECRET_KEY
+        sync: false
+
+      # Telegram Configuration
       - key: TELEGRAM_API_ID
         sync: false
       - key: TELEGRAM_API_HASH

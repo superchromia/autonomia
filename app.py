@@ -5,11 +5,13 @@ from contextlib import asynccontextmanager
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 from fastapi import FastAPI
+from starlette.middleware.sessions import SessionMiddleware
 
 # Telethon hook is automatically registered when imported
 import jobs.telethon_hook  # noqa: F401
 from admin import setup_admin
 from api import v1_router
+from config import config
 from dependency import dependency
 from jobs.fetch_messages import fetch_all_messages_job
 from jobs.sync_dialogs import sync_dialogs_job
@@ -46,6 +48,9 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="Superchromia API", version="1.0.0", lifespan=lifespan)
 scheduler = AsyncIOScheduler()
+
+# Add session middleware for admin authentication
+app.add_middleware(SessionMiddleware, secret_key=config.secret_key)
 
 logging.basicConfig(
     level=logging.INFO,
