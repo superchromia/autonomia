@@ -1,5 +1,5 @@
 databases:
-  - name: superchromia-postgres
+  - name: autochromia-postgres
     region: frankfurt
     databaseName: superchromia
     plan: basic-256mb
