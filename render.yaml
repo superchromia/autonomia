@@ -2,14 +2,14 @@ databases:
   - name: autonomia-postgres
     region: frankfurt
     databaseName: telegram
-    plan: free
+    plan: basic-256mb
 
 services:
   - type: web
     name: autonomia
     region: frankfurt
     runtime: docker
-    plan: free
+    plan: starter
     envVars:
       - key: DATABASE_URL
         fromDatabase:

@@ -26,6 +26,9 @@ openai = "^1.96.0"
 pillow = "^11.3.0"
 requests = "^2.32.4"
 tqdm = "^4.67.1"
+jinja2 = "^3.1.2"
+python-multipart = "^0.0.20"
+sqladmin = {extras = ["full"], version = "^0.21.0"}
 
 [tool.poetry.group.dev.dependencies]
 ruff = "^0.8.1"
@@ -38,7 +41,7 @@ autonomia = "app:main"
 
 [tool.ruff]
 # Same as Black.
-line-length = 79
+line-length = 160
 
 # Assume Python 3.11
 target-version = "py311"

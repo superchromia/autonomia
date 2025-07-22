@@ -1,46 +1,24 @@
 import base64
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from telethon.events import NewMessage
+from telethon.events.common import EventCommon
 
 from models.event import Event
-
-
-def convert_obj(obj: Any) -> Any:
-    if isinstance(obj, dict):
-        return {k: convert_obj(v) for k, v in obj.items()}
-    elif isinstance(obj, list):
-        return [convert_obj(i) for i in obj]
-    elif isinstance(obj, datetime):
-        return obj.isoformat()
-    elif isinstance(obj, bytes):
-        return base64.b64encode(obj).decode("ascii")
-    elif hasattr(obj, "to_dict"):
-        return convert_obj(obj.to_dict())
-    else:
-        return obj
+from utils import convert_telegram_obj
 
 
 class EventRepository:
     def __init__(self, session: AsyncSession):
         self.session = session
 
-    async def save_event(self, event: NewMessage.Event):
+    async def save_event(self, event: EventCommon):
         event_obj = Event(
-            chat_id=event.chat_id,
-            sender_id=event.sender_id,
-            message_id=event._message_id,
-            utc_dttm=event.date.replace(tzinfo=None),
-            event_json=convert_obj(event.to_dict()),
+            chat_id=getattr(event, "chat_id", 0),
+            message_id=getattr(event, "_message_id", 0),
+            event_json=convert_telegram_obj(event),
         )
         self.session.add(event_obj)
         return event_obj
-
-    async def get_last_message_id(self, chat_id):
-        result = await self.session.execute(
-            select(func.max(Event.message_id)).where(Event.chat_id == chat_id)
-        )
-        return result.scalar() or 0

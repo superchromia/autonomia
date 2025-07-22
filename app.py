@@ -3,52 +3,39 @@ import logging
 from contextlib import asynccontextmanager
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
-from apscheduler.triggers.interval import IntervalTrigger
+from apscheduler.triggers.cron import CronTrigger
 from fastapi import FastAPI
 
 # Telethon hook is automatically registered when imported
 import jobs.telethon_hook  # noqa: F401
+from admin import setup_admin
 from api import v1_router
 from dependency import dependency
 from jobs.fetch_messages import fetch_all_messages_job
-from models.base import Base
+from jobs.sync_dialogs import sync_dialogs_job
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Startup
-    loop = asyncio.get_event_loop()
+    logger.info("Applying Alembic migrations...")
+    from alembic import command
+    from alembic.config import Config
 
-    # Apply Alembic migrations
-    try:
-        logger.info("Applying Alembic migrations...")
-        from alembic import command
-        from alembic.config import Config
+    # Create configuration programmatically
+    alembic_cfg = Config()
+    alembic_cfg.set_main_option("script_location", "alembic")
+    alembic_cfg.set_main_option("prepend_sys_path", ".")
+    alembic_cfg.set_main_option("path_separator", "os")
 
-        # Create configuration programmatically
-        alembic_cfg = Config()
-        alembic_cfg.set_main_option("script_location", "alembic")
-        alembic_cfg.set_main_option("prepend_sys_path", ".")
-        alembic_cfg.set_main_option("path_separator", "os")
+    command.upgrade(alembic_cfg, "head")
+    logger.info("Alembic migrations applied successfully")
 
-        command.upgrade(alembic_cfg, "head")
-        logger.info("Alembic migrations applied successfully")
-    except Exception as e:
-        logger.error(f"Failed to apply Alembic migrations: {e}")
-        # Create tables as fallback
-        async with dependency.engine.begin() as conn:
-            await conn.run_sync(Base.metadata.create_all)
+    scheduler.add_job(fetch_all_messages_job, CronTrigger(hour=1))
+    scheduler.add_job(sync_dialogs_job, CronTrigger(hour=2))
 
-    scheduler.add_job(fetch_all_messages_job, IntervalTrigger(minutes=60))
     scheduler.start()
-
-    if dependency.telegram_client:
-        loop.create_task(start_telethon())
-    else:
-        logger.warning(
-            "Telegram client not initialized - API credentials not provided"
-        )
-
+    await dependency.init_telegram_client()
+    asyncio.create_task(sync_dialogs_job())
     yield
 
     # Shutdown
@@ -67,12 +54,8 @@ logging.basicConfig(
 )
 logger = logging.getLogger("app")
 
+# Setup SQLAdmin
+admin = setup_admin(app, dependency.engine)
 
 # Include API routers
 app.include_router(v1_router)
-
-
-async def start_telethon():
-    """Start and run the Telegram client until disconnected."""
-    await dependency.telegram_client.start()
-    await dependency.telegram_client.run_until_disconnected()
