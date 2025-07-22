@@ -34,8 +34,14 @@ async def lifespan(app: FastAPI):
     command.upgrade(alembic_cfg, "head")
     logger.info("Alembic migrations applied successfully")
 
-    scheduler.add_job(fetch_all_messages_job, CronTrigger(hour=1))
-    scheduler.add_job(sync_dialogs_job, CronTrigger(hour=2))
+    scheduler.add_job(
+        fetch_all_messages_job,
+        CronTrigger.from_crontab("0 * * * *"),
+    )
+    scheduler.add_job(
+        sync_dialogs_job,
+        CronTrigger.from_crontab("30 * * * *"),
+    )
 
     scheduler.start()
     await dependency.init_telegram_client()
