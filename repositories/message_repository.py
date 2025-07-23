@@ -72,18 +72,6 @@ class MessageRepository:
         self, chat_id: int, deleted_ids: List[int]
     ) -> int:
 
-        chat_id = None
-        if hasattr(event, "chat_id"):
-            chat_id = event.chat_id
-        elif hasattr(event, "peer_id"):
-            if hasattr(event.peer_id, "channel_id"):
-                chat_id = event.peer_id.channel_id
-            elif hasattr(event.peer_id, "user_id"):
-                chat_id = event.peer_id.user_id
-
-        if not chat_id:
-            return False
-
         deleted_count = 0
         for message_id in deleted_ids:
             message = await self.get_message(
@@ -98,7 +86,7 @@ class MessageRepository:
 
     async def get_message(
         self, message_id: int, chat_id: int
-    ) -> Optional[Message]:
+    ) -> Message | None:
         result = await self.session.execute(
             select(Message).where(
                 Message.message_id == message_id,
