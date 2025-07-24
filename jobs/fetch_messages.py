@@ -1,5 +1,5 @@
-import logging
 import asyncio
+import logging
 from collections.abc import AsyncGenerator
 from datetime import UTC
 from typing import TypeVar
@@ -31,7 +31,10 @@ async def messages_generator(
 
         offset_id = 0
         while True:
-            logger.info(f"Fetching messages for chat_id={chat_id}, offset_id={offset_id}")
+            logger.info(
+                f"Fetching messages for chat_id={chat_id}, "
+                f"offset_id={offset_id}"
+            )
             stop_fetching = True
             async for msg in client.iter_messages(
                 entity=chat_id,
@@ -107,8 +110,7 @@ async def fetch_all_messages_job():
                     continue
 
                 logger.info(f"Fetching messages for {chat_id}")
-                min_message_id = 0
-                while_True
+                while True:
                     load_from_date = active_configs[chat_id].load_from_date
                     messages_gen = messages_generator(
                         client, chat_id, load_from_date
