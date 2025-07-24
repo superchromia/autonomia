@@ -33,7 +33,13 @@ async def messages_generator(
             limit=None,
             offset_date=load_from_date,
         ):
+            if msg.action:
+                logger.info(
+                    f"MessageService action: {msg.action}, skipping it"
+                )
+                continue
             # If start date is specified, skip old messages
+
             if load_from_date and msg.date < load_from_date.replace(
                 tzinfo=UTC
             ):
