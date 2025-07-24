@@ -46,14 +46,10 @@ async def sync_dialogs_job():
                         await user_repo.save_user(entity)
                         logger.info(f"Saved user: {entity}")
 
-                    if (
-                        isinstance(entity, types.Chat)
-                        and entity.participants_count > 0
-                    ):
-                        participants = await client.get_participants(entity)
-                        for participant in participants:
-                            await user_repo.save_user(participant)
-                            logger.info(f"Saved participant: {participant}")
+                    logger.info(f"Listing participants: {entity}")
+                    async for participant in client.iter_participants(entity):
+                        await user_repo.save_user(participant)
+                        logger.info(f"Saved participant: {participant}")
 
                 await session.commit()
                 logger.info("Sync dialogs job completed successfully")
