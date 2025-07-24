@@ -7,7 +7,7 @@ def setup_logging():
 
     config = {
         "version": 1,
-        "disable_existing_loggers": True,
+        "disable_existing_loggers": False,
         "formatters": {
             "default": {
                 "format": "%(asctime)s [%(levelname)s] %(name)s: %(message)s",
@@ -32,10 +32,30 @@ def setup_logging():
                 "handlers": ["console"],
                 "propagate": False,
             },
-            "sqlalchemy.engine": {
-                "level": "WARN",
+            "sqlalchemy": {
+                "level": "ERROR",
                 "handlers": ["console"],
-                "propagate": True,
+                "propagate": False,
+            },
+            "sqlalchemy.engine": {
+                "level": "ERROR",
+                "handlers": ["console"],
+                "propagate": False,
+            },
+            "sqlalchemy.pool": {
+                "level": "ERROR",
+                "handlers": ["console"],
+                "propagate": False,
+            },
+            "sqlalchemy.dialects": {
+                "level": "ERROR",
+                "handlers": ["console"],
+                "propagate": False,
+            },
+            "sqlalchemy.orm": {
+                "level": "ERROR",
+                "handlers": ["console"],
+                "propagate": False,
             },
             "telethon_hook": {
                 "level": "INFO",

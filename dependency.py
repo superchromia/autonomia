@@ -19,7 +19,7 @@ if parsed.scheme != "postgresql+asyncpg":
     database_url = urlunparse(("postgresql+asyncpg",) + parsed[1:])
 
 
-engine = create_async_engine(database_url, echo=True, future=True)
+engine = create_async_engine(database_url, future=True)
 async_session = sessionmaker(
     engine, expire_on_commit=False, class_=AsyncSession
 )
