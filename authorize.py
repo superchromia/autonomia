@@ -11,10 +11,10 @@ import os
 from telethon import TelegramClient
 from telethon.sessions import StringSession
 
-# Logging configuration
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
-)
+# Setup logging
+from logging_config import setup_logging
+
+setup_logging()
 logger = logging.getLogger(__name__)
 
 
@@ -63,7 +63,8 @@ async def create_string_session():
         logger.info(string_session)
         logger.info("=" * 60)
         logger.info(
-            "Now add this string to the TELETHON_SESSION_STRING environment variable in Render"
+            "Now add this string to the TELETHON_SESSION_STRING "
+            "environment variable in Render"
         )
 
         await client.disconnect()

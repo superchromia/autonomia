@@ -9,6 +9,11 @@ from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.sessions import SessionMiddleware
 
+# Setup logging first
+from logging_config import setup_logging
+
+setup_logging()
+
 # Telethon hook is automatically registered when imported
 import jobs.telethon_hook  # noqa: F401
 from admin import setup_admin
@@ -18,6 +23,7 @@ from dependency import dependency
 from jobs.fetch_messages import fetch_all_messages_job
 from jobs.sync_dialogs import sync_dialogs_job
 
+logger = logging.getLogger("app")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -68,15 +74,6 @@ async def root():
     """Root endpoint"""
     return {"message": "Superchromia API is running", "version": "1.0.0"}
 
-
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
-    handlers=[logging.StreamHandler()],
-)
-logger = logging.getLogger("app")
-logger_sqlalchemy = logging.getLogger("sqlalchemy.engine")
-logger_sqlalchemy.setLevel(logging.WARNING)
 
 # Setup SQLAdmin
 admin = setup_admin(app, dependency.engine)
