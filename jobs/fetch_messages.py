@@ -62,6 +62,7 @@ async def messages_generator(
             await asyncio.sleep(1)
     except Exception as e:
         logger.exception(f"Error fetching messages for chat_id={chat_id}: {e}")
+        raise e
 
 
 async def take_batch(
