@@ -103,14 +103,15 @@ async def fetch_all_messages_job():
                 return
 
             # Process each active chat
-            async for dialog in client.iter_dialogs():
-                dialog: types.Dialog
-                chat_id = dialog.entity.id
-                if chat_id not in active_configs:
-                    continue
+        async for dialog in client.iter_dialogs():
+            dialog: types.Dialog
+            chat_id = dialog.entity.id
+            if chat_id not in active_configs:
+                continue
 
-                logger.info(f"Fetching messages for {chat_id}")
-                while True:
+            logger.info(f"Fetching messages for {chat_id}")
+            while True:
+                async with session.begin():
                     load_from_date = active_configs[chat_id].load_from_date
                     messages_gen = messages_generator(
                         client, chat_id, load_from_date
