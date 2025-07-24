@@ -24,40 +24,37 @@ async def sync_dialogs_job():
     logger.info("Sync dialogs job started")
 
     async for session in dependency.get_session():
-        async with session.begin():
-            # Get repositories
-            chat_repo = ChatRepository(session)
-            user_repo = UserRepository(session)
+        # Get repositories
+        chat_repo = ChatRepository(session)
+        user_repo = UserRepository(session)
 
-            try:
-                # Iterate through all dialogs
-                async for dialog in client.iter_dialogs():
-                    dialog: types.Dialog
-                    entity = dialog.entity
+        try:
+            # Iterate through all dialogs
+            async for dialog in client.iter_dialogs():
+                dialog: types.Dialog
+                entity = dialog.entity
 
-                    logger.info(
-                        f"Processing dialog: {dialog.name} (ID: {entity.id})"
-                    )
+                logger.info(
+                    f"Processing dialog: {dialog.name} (ID: {entity.id})"
+                )
 
-                    await chat_repo.save_chat(entity)
-                    logger.info(f"Saved chat: {entity}")
+                await chat_repo.save_chat(entity)
+                logger.info(f"Saved chat: {entity}")
 
-                    if isinstance(entity, types.User):
-                        await user_repo.save_user(entity)
-                        logger.info(f"Saved user: {entity}")
+                if isinstance(entity, types.User):
+                    await user_repo.save_user(entity)
+                    logger.info(f"Saved user: {entity}")
 
-                    logger.info(f"Listing participants: {entity}")
-                    try:
-                        async for participant in client.iter_participants(
-                            entity
-                        ):
-                            await user_repo.save_user(participant)
-                            logger.info(f"Saved participant: {participant}")
-                    except Exception as e:
-                        logger.error(f"Error listing participants: {e}")
+                logger.info(f"Listing participants: {entity}")
+                try:
+                    async for participant in client.iter_participants(entity):
+                        await user_repo.save_user(participant)
+                        logger.info(f"Saved participant: {participant}")
+                except Exception as e:
+                    logger.error(f"Error listing participants: {e}")
 
-                logger.info("Sync dialogs job completed successfully")
+            logger.info("Sync dialogs job completed successfully")
 
-            except Exception as e:
-                logger.exception(f"Error in sync dialogs job: {e}")
-                raise
+        except Exception as e:
+            logger.exception(f"Error in sync dialogs job: {e}")
+            raise

@@ -1,4 +1,4 @@
-
+from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 from telethon.events.common import EventCommon
 
@@ -11,10 +11,12 @@ class EventRepository:
         self.session = session
 
     async def save_event(self, event: EventCommon):
-        event_obj = Event(
-            chat_id=getattr(event, "chat_id", 0),
-            message_id=getattr(event, "_message_id", 0),
-            event_json=convert_telegram_obj(event),
-        )
-        self.session.add(event_obj)
-        return event_obj
+        async with self.session.begin():
+            event_obj = dict(
+                chat_id=getattr(event, "chat_id", 0),
+                message_id=getattr(event, "_message_id", 0),
+                event_json=convert_telegram_obj(event),
+            )
+            stmt = insert(Event).values(event_obj).on_conflict_do_nothing()
+            await self.session.execute(stmt)
+            return event_obj

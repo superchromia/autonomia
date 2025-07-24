@@ -107,5 +107,5 @@ known-first-party = ["api", "jobs", "models", "repositories", "storage", "extern
 "__init__.py" = ["F401"]
 
 [tool.black]
-line-length = 79
+line-length = 160
 target-version = ['py311'] 

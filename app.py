@@ -46,7 +46,7 @@ async def lifespan(app: FastAPI):
     scheduler.start()
     await dependency.init_telegram_client()
 
-    asyncio.create_task(sync_dialogs_job())
+    # asyncio.create_task(sync_dialogs_job())
     asyncio.create_task(fetch_all_messages_job())
     yield
 
@@ -75,6 +75,8 @@ logging.basicConfig(
     handlers=[logging.StreamHandler()],
 )
 logger = logging.getLogger("app")
+logger_sqlalchemy = logging.getLogger("sqlalchemy.engine")
+logger_sqlalchemy.setLevel(logging.WARNING)
 
 # Setup SQLAdmin
 admin = setup_admin(app, dependency.engine)

@@ -18,7 +18,7 @@ class Message(Base):
 
     message_id = Column(BigInteger, nullable=False)
     chat_id = Column(BigInteger, nullable=False)
-    sender_id = Column(BigInteger, nullable=False, index=True)
+    sender_id = Column(BigInteger, nullable=True, index=True)
 
     # Important metadata
     date = Column(DateTime(timezone=True), nullable=False, index=True)
