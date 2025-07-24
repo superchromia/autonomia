@@ -45,7 +45,9 @@ async def lifespan(app: FastAPI):
 
     scheduler.start()
     await dependency.init_telegram_client()
+
     asyncio.create_task(sync_dialogs_job())
+    asyncio.create_task(fetch_all_messages_job())
     yield
 
     # Shutdown
