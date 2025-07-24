@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from telethon.tl.types import Message as TelegramMessage
 
 from models.message import Message
+from models.messages_enriched import EnrichedMessage
 from utils import convert_telegram_obj
 
 
@@ -154,3 +155,16 @@ class MessageRepository:
             )
             messages = result.scalars().all()
         return messages
+
+    async def get_unenriched_messages(self, chat_id: int, limit: int = 10) -> list[Message]:
+        async with self.session.begin():
+            # Get messages that don't have enriched versions
+            self.session.echo = True
+            result = await self.session.execute(
+                select(Message.message_id)
+                .outerjoin(EnrichedMessage, (Message.message_id == EnrichedMessage.message_id) & (Message.chat_id == EnrichedMessage.chat_id))
+                .where(Message.chat_id == chat_id)
+                .order_by(Message.message_id.desc())
+                .limit(limit)
+            )
+            return result.scalars().all()

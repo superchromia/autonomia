@@ -20,10 +20,12 @@ from admin import setup_admin
 from api import v1_router
 from config import config
 from dependency import dependency
+from jobs.enrich_old_messages import enrich_old_messages_job
 from jobs.fetch_messages import fetch_all_messages_job
 from jobs.sync_dialogs import sync_dialogs_job
 
 logger = logging.getLogger("app")
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -47,6 +49,10 @@ async def lifespan(app: FastAPI):
     scheduler.add_job(
         sync_dialogs_job,
         CronTrigger.from_crontab("30 * * * *"),
+    )
+    scheduler.add_job(
+        enrich_old_messages_job,
+        CronTrigger.from_crontab("* * * * *"),
     )
 
     scheduler.start()

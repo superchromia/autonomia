@@ -1,4 +1,5 @@
 import json
+import logging
 import os
 
 from openai import AsyncOpenAI
@@ -17,6 +18,8 @@ ai_client = AsyncOpenAI(
 from typing import List, Literal
 
 from pydantic import BaseModel
+
+logger = logging.getLogger("enrich_messages")
 
 
 class UserDescription(BaseModel):
@@ -77,7 +80,7 @@ async def process_message(session, chat_id: int, message_id: int) -> Message:
     enriched_message_repo = EnrichedMessageRepository(session)
 
     context = await collect_message_context(message_repo, user_repo, chat_id=chat_id, message_id=message_id)
-
+    logger.info(f"Collected context for message {message_id} in chat {chat_id}")
     response = await ai_client.chat.completions.create(
         model="deepseek-ai/DeepSeek-V3",
         messages=[
@@ -105,6 +108,7 @@ async def process_message(session, chat_id: int, message_id: int) -> Message:
         extra_body={"guided_json": EnrichedMessage.model_json_schema()},
     )
     response = response.choices[0].message.content
+    logger.info(f"Collected response for message {message_id} in chat {chat_id}")
     data = json.loads(response)
 
     embeddings_data = await ai_client.embeddings.create(
@@ -115,9 +119,11 @@ async def process_message(session, chat_id: int, message_id: int) -> Message:
 
         СМЫСЛ 
         {meaning}
-        """.format(context=data["context"], meaning=data["meaning"]),
+        """.format(
+            context=data["context"], meaning=data["meaning"]
+        ),
     )
-
+    logger.info(f"Collected embeddings for message {message_id} in chat {chat_id}")
     embeddings = embeddings_data.data[0].embedding
 
     await enriched_message_repo.save(
