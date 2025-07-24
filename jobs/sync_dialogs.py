@@ -47,9 +47,14 @@ async def sync_dialogs_job():
                         logger.info(f"Saved user: {entity}")
 
                     logger.info(f"Listing participants: {entity}")
-                    async for participant in client.iter_participants(entity):
-                        await user_repo.save_user(participant)
-                        logger.info(f"Saved participant: {participant}")
+                    try:
+                        async for participant in client.iter_participants(
+                            entity
+                        ):
+                            await user_repo.save_user(participant)
+                            logger.info(f"Saved participant: {participant}")
+                    except Exception as e:
+                        logger.error(f"Error listing participants: {e}")
 
                 await session.commit()
                 logger.info("Sync dialogs job completed successfully")
