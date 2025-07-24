@@ -1,5 +1,4 @@
-
-from pydantic import Field, validator
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings
 
 
@@ -45,38 +44,45 @@ class Config(BaseSettings):
     )
 
     # Validation
-    @validator("admin_username")
-    def validate_admin_username(self, v):
+    @field_validator("admin_username")
+    @classmethod
+    def validate_admin_username(cls, v):
         if not v or len(v.strip()) == 0:
             raise ValueError("Admin username cannot be empty")
         if len(v) < 3:
             raise ValueError("Admin username must be at least 3 characters")
         return v.strip()
 
-    @validator("admin_password")
-    def validate_admin_password(self, v):
+    @field_validator("admin_password")
+    @classmethod
+    def validate_admin_password(cls, v):
         if not v or len(v.strip()) == 0:
             raise ValueError("Admin password cannot be empty")
         if len(v) < 6:
             raise ValueError("Admin password must be at least 6 characters")
         return v
 
-    @validator("telegram_api_id")
-    def validate_telegram_api_id(self, v):
+    @field_validator("telegram_api_id")
+    @classmethod
+    def validate_telegram_api_id(cls, v):
         if v is not None:
             try:
                 int(v)
             except ValueError as err:
-                raise ValueError("TELEGRAM_API_ID must be a valid integer") from err
+                raise ValueError(
+                    "TELEGRAM_API_ID must be a valid integer"
+                ) from err
         return v
 
-    @validator("telegram_api_hash")
+    @field_validator("telegram_api_hash")
+    @classmethod
     def validate_telegram_api_hash(cls, v):
         if v is not None and len(v) != 32:
             raise ValueError("TELEGRAM_API_HASH must be exactly 32 characters")
         return v
 
-    @validator("secret_key")
+    @field_validator("secret_key")
+    @classmethod
     def validate_secret_key(cls, v):
         if len(v) < 32:
             raise ValueError("SECRET_KEY must be at least 32 characters long")
