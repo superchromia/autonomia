@@ -121,4 +121,3 @@ async def fetch_all_messages_job():
                             await message_repo.save_message(msg)
                         logger.info(f"Saved messages batch: {len(batch)}")
                         await session.flush()
-                        await session.commit()

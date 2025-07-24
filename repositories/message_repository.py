@@ -12,17 +12,9 @@ class MessageRepository:
     def __init__(self, session: AsyncSession):
         self.session = session
 
-    async def update_messages(self, messages: list[Message]) -> None:
-        """Update messages from dialog"""
-        async with self.session.begin():
-            for message in messages:
-                await self.session.merge(message)
-            await self.session.flush()
-
     async def save_message(self, message: TelegramMessage) -> Message:
         """Save message to database"""
         # Determine message type
-
         message_type = "text"
         if hasattr(message, "media") and message.media:
             if hasattr(message.media, "photo"):

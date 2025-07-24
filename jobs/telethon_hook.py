@@ -25,6 +25,7 @@ async def events_handler(event):
             try:
                 logger.info(f"Received event: {event}")
                 await event_repo.save_event(event)
+                await session.flush()
             except Exception as e:
                 logger.exception(f"Failed to save event: {e}")
 
@@ -50,7 +51,6 @@ async def new_message_handler(event: events.NewMessage.Event):
                 await tg.send_read_acknowledge(chat, message)
 
                 await session.flush()
-                await session.commit()
             except Exception as e:
                 logger.exception(f"Failed to save message: {e}")
 
@@ -79,5 +79,6 @@ async def message_deleted_handler(event: events.MessageDeleted.Event):
                 await message_repo.delete_messages(
                     chat_id=event.chat_id, deleted_ids=event.deleted_ids
                 )
+                await session.flush()
             except Exception as e:
                 logger.exception(f"Failed to delete message: {e}")
