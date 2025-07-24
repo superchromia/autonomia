@@ -35,7 +35,7 @@ def setup_logging():
             "sqlalchemy.engine": {
                 "level": "WARN",
                 "handlers": ["console"],
-                "propagate": False,
+                "propagate": True,
             },
             "telethon_hook": {
                 "level": "INFO",
