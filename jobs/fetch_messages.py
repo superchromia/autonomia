@@ -98,7 +98,9 @@ async def fetch_all_messages_job():
                     client, chat_id, load_from_date
                 )
                 logger.info(f"Fetching messages for {chat_id}")
-                async for msg in messages_gen:
-                    await message_repo.save_message(msg)
-                    logger.info(f"Saved message: {msg}")
-                await session.commit()
+                async for batch in take_batch(messages_gen):
+                    for msg in batch:
+                        await message_repo.save_message(msg)
+                    logger.info(f"Saved messages batch: {len(batch)}")
+                    await session.flush()
+                    await session.commit()
