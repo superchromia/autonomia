@@ -1,7 +1,6 @@
 from datetime import UTC, datetime
-from typing import Any, Dict, List, Optional
 
-from sqlalchemy import and_, asc, desc, func, select
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from telethon.tl.types import Message as TelegramMessage
 
@@ -13,7 +12,7 @@ class MessageRepository:
     def __init__(self, session: AsyncSession):
         self.session = session
 
-    async def update_messages(self, messages: List[Message]) -> None:
+    async def update_messages(self, messages: list[Message]) -> None:
         """Update messages from dialog"""
         async with self.session.begin():
             for message in messages:
@@ -69,7 +68,7 @@ class MessageRepository:
         await self.save_message(message)
 
     async def delete_messages(
-        self, chat_id: int, deleted_ids: List[int]
+        self, chat_id: int, deleted_ids: list[int]
     ) -> int:
 
         deleted_count = 0

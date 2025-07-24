@@ -1,8 +1,6 @@
-import base64
-from datetime import UTC, datetime, timedelta
-from typing import Any, Dict, List, Optional
+from typing import Any
 
-from sqlalchemy import and_, asc, desc, func, select
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from telethon.tl.types import Channel, Chat, User
 
@@ -51,14 +49,14 @@ class ChatRepository:
         await self.session.merge(chat_obj)
         return chat_obj
 
-    async def list_all(self) -> List[ChatModel]:
+    async def list_all(self) -> list[ChatModel]:
         """Get all chats from database"""
         result = await self.session.execute(
             select(ChatModel).order_by(ChatModel.title)
         )
         return result.scalars().all()
 
-    async def get_by_id(self, chat_id: int) -> Optional[ChatModel]:
+    async def get_by_id(self, chat_id: int) -> ChatModel | None:
         """Get chat by ID"""
         result = await self.session.execute(
             select(ChatModel).where(ChatModel.id == chat_id)

@@ -1,4 +1,3 @@
-from typing import List, Optional
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
@@ -10,11 +9,11 @@ class ChatConfigRepository:
     def __init__(self, session: AsyncSession):
         self.session = session
 
-    async def list_all(self) -> List[ChatConfig]:
+    async def list_all(self) -> list[ChatConfig]:
         result = await self.session.execute(select(ChatConfig))
         return result.scalars().all()
 
-    async def get(self, chat_id: int) -> Optional[ChatConfig]:
+    async def get(self, chat_id: int) -> ChatConfig | None:
         result = await self.session.execute(
             select(ChatConfig).where(ChatConfig.chat_id == chat_id)
         )

@@ -1,4 +1,3 @@
-from typing import Optional
 
 from pydantic import Field, validator
 from pydantic_settings import BaseSettings
@@ -27,10 +26,10 @@ class Config(BaseSettings):
     )
 
     # Telegram
-    telegram_api_id: Optional[str] = Field(
+    telegram_api_id: str | None = Field(
         default=None, env="TELEGRAM_API_ID", description="Telegram API ID"
     )
-    telegram_api_hash: Optional[str] = Field(
+    telegram_api_hash: str | None = Field(
         default=None, env="TELEGRAM_API_HASH", description="Telegram API Hash"
     )
     telethon_session_string: str = Field(
@@ -47,7 +46,7 @@ class Config(BaseSettings):
 
     # Validation
     @validator("admin_username")
-    def validate_admin_username(cls, v):
+    def validate_admin_username(self, v):
         if not v or len(v.strip()) == 0:
             raise ValueError("Admin username cannot be empty")
         if len(v) < 3:
@@ -55,7 +54,7 @@ class Config(BaseSettings):
         return v.strip()
 
     @validator("admin_password")
-    def validate_admin_password(cls, v):
+    def validate_admin_password(self, v):
         if not v or len(v.strip()) == 0:
             raise ValueError("Admin password cannot be empty")
         if len(v) < 6:
@@ -63,12 +62,12 @@ class Config(BaseSettings):
         return v
 
     @validator("telegram_api_id")
-    def validate_telegram_api_id(cls, v):
+    def validate_telegram_api_id(self, v):
         if v is not None:
             try:
                 int(v)
-            except ValueError:
-                raise ValueError("TELEGRAM_API_ID must be a valid integer")
+            except ValueError as err:
+                raise ValueError("TELEGRAM_API_ID must be a valid integer") from err
         return v
 
     @validator("telegram_api_hash")

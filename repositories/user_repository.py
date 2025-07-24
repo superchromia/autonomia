@@ -1,5 +1,4 @@
 import logging
-from typing import List, Optional
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -33,14 +32,14 @@ class UserRepository:
         await self.session.merge(user_obj)
         return user_obj
 
-    async def list_all(self) -> List[UserModel]:
+    async def list_all(self) -> list[UserModel]:
         """Get all users"""
         result = await self.session.execute(
             select(UserModel).order_by(UserModel.id)
         )
         return result.scalars().all()
 
-    async def get(self, user_id: int) -> Optional[UserModel]:
+    async def get(self, user_id: int) -> UserModel | None:
         """Get user by ID"""
         result = await self.session.execute(
             select(UserModel).where(UserModel.id == user_id)

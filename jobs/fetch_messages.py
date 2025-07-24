@@ -1,6 +1,7 @@
 import logging
+from collections.abc import AsyncGenerator
 from datetime import UTC
-from typing import AsyncGenerator, TypeVar
+from typing import TypeVar
 
 from telethon import TelegramClient, types
 

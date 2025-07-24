@@ -1,3 +1,4 @@
+from typing import ClassVar
 from sqladmin import Admin, ModelView
 from sqladmin.authentication import AuthenticationBackend
 from starlette.requests import Request
@@ -15,7 +16,7 @@ class ChatAdmin(ModelView, model=Chat):
     name_plural = "Chats"
     icon = "fa-solid fa-comments"
 
-    column_list = [
+    column_list: ClassVar = [
         Chat.id,
         Chat.chat_type,
         Chat.title,
@@ -28,12 +29,12 @@ class ChatAdmin(ModelView, model=Chat):
         Chat.updated_at,
     ]
 
-    column_searchable_list = [
+    column_searchable_list: ClassVar = [
         Chat.title,
         Chat.username,
     ]
 
-    column_sortable_list = [
+    column_sortable_list: ClassVar = [
         Chat.id,
         Chat.chat_type,
         Chat.title,
@@ -47,7 +48,7 @@ class ChatAdmin(ModelView, model=Chat):
     can_edit = True
     can_delete = False
 
-    form_excluded_columns = ["raw_data", "created_at", "updated_at"]
+    form_excluded_columns: ClassVar = ["raw_data", "created_at", "updated_at"]
 
 
 class UserAdmin(ModelView, model=User):
@@ -57,7 +58,7 @@ class UserAdmin(ModelView, model=User):
     name_plural = "Users"
     icon = "fa-solid fa-user"
 
-    column_list = [
+    column_list: ClassVar = [
         User.id,
         User.first_name,
         User.last_name,
@@ -71,13 +72,13 @@ class UserAdmin(ModelView, model=User):
         User.updated_at,
     ]
 
-    column_searchable_list = [
+    column_searchable_list: ClassVar = [
         User.first_name,
         User.last_name,
         User.username,
     ]
 
-    column_sortable_list = [
+    column_sortable_list: ClassVar = [
         User.id,
         User.first_name,
         User.username,
@@ -92,7 +93,7 @@ class UserAdmin(ModelView, model=User):
     can_edit = True
     can_delete = False
 
-    form_excluded_columns = ["raw_data", "created_at", "updated_at"]
+    form_excluded_columns: ClassVar = ["raw_data", "created_at", "updated_at"]
 
 
 class ChatConfigAdmin(ModelView, model=ChatConfig):
@@ -102,7 +103,7 @@ class ChatConfigAdmin(ModelView, model=ChatConfig):
     name_plural = "Chat Configurations"
     icon = "fa-solid fa-cog"
 
-    column_list = [
+    column_list: ClassVar = [
         ChatConfig.chat_id,
         ChatConfig.save_messages,
         ChatConfig.load_from_date,
@@ -110,11 +111,11 @@ class ChatConfigAdmin(ModelView, model=ChatConfig):
         ChatConfig.answer_threshold,
     ]
 
-    column_searchable_list = [
+    column_searchable_list: ClassVar = [
         ChatConfig.chat_id,
     ]
 
-    column_sortable_list = [
+    column_sortable_list: ClassVar = [
         ChatConfig.chat_id,
         ChatConfig.save_messages,
         ChatConfig.load_from_date,

@@ -1,8 +1,4 @@
-import base64
-from datetime import UTC, datetime
-from typing import Any
 
-from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from telethon.events.common import EventCommon
 
