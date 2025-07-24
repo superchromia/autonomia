@@ -35,14 +35,17 @@ class UserRepository:
 
     async def list_all(self) -> list[UserModel]:
         """Get all users"""
-        result = await self.session.execute(
-            select(UserModel).order_by(UserModel.id)
-        )
+        result = await self.session.execute(select(UserModel).order_by(UserModel.id))
         return result.scalars().all()
 
     async def get(self, user_id: int) -> UserModel | None:
         """Get user by ID"""
-        result = await self.session.execute(
-            select(UserModel).where(UserModel.id == user_id)
-        )
+        result = await self.session.execute(select(UserModel).where(UserModel.id == user_id))
         return result.scalar_one_or_none()
+
+    async def get_usernames(self) -> dict[int, str]:
+        """Get usernames for all users"""
+        async with self.session.begin():
+            stmt = select(UserModel)
+            result = await self.session.execute(stmt)
+        return {user.id: f"@{user.username}" or f"@{user.first_name}{user.last_name}" for user in result.scalars().all()}

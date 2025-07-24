@@ -16,7 +16,7 @@ services:
       - postgres
 
   postgres:
-    image: postgres:15
+    image: pgvector/pgvector:pg17
     restart: unless-stopped
     env_file:
       - ../.env

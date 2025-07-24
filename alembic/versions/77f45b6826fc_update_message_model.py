@@ -26,6 +26,7 @@ def upgrade() -> None:
                nullable=True)
     op.drop_index(op.f('ix_users_bot_verified'), table_name='users')
     op.drop_index(op.f('ix_users_premium'), table_name='users')
+    \
     # ### end Alembic commands ###
 
 
