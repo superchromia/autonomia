@@ -163,7 +163,7 @@ class MessageRepository:
             result = await self.session.execute(
                 select(Message.message_id)
                 .outerjoin(EnrichedMessage, (Message.message_id == EnrichedMessage.message_id) & (Message.chat_id == EnrichedMessage.chat_id))
-                .where(Message.chat_id == chat_id)
+                .where(Message.chat_id == chat_id, EnrichedMessage.message_id.is_(None))
                 .order_by(Message.message_id.desc())
                 .limit(limit)
             )
