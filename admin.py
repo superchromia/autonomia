@@ -1,4 +1,5 @@
 from typing import ClassVar
+
 from sqladmin import Admin, ModelView
 from sqladmin.authentication import AuthenticationBackend
 from starlette.requests import Request
@@ -25,6 +26,8 @@ class ChatAdmin(ModelView, model=Chat):
         Chat.is_scam,
         Chat.is_fake,
         Chat.member_count,
+        Chat.messages_count,
+        Chat.enriched_messages_count,
         Chat.created_at,
         Chat.updated_at,
     ]
@@ -135,10 +138,7 @@ class AdminAuth(AuthenticationBackend):
         form = await request.form()
         username, password = form["username"], form["password"]
 
-        if (
-            username == config.admin_username
-            and password == config.admin_password
-        ):
+        if username == config.admin_username and password == config.admin_password:
             request.session.update({"admin_auth": True})
             return True
         return False

@@ -6,11 +6,15 @@ from sqlalchemy import (
     Index,
     Integer,
     String,
+    select,
 )
 from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.orm import column_property
 from sqlalchemy.sql import func
 
 from models.base import Base
+from models.message import Message
+from models.messages_enriched import EnrichedMessage
 
 
 class Chat(Base):
@@ -20,9 +24,7 @@ class Chat(Base):
 
     # Main fields for fast search
     id = Column(BigInteger, primary_key=True)
-    chat_type = Column(
-        String(20), nullable=False, index=True
-    )  # user, chat, channel, supergroup
+    chat_type = Column(String(20), nullable=False, index=True)  # user, chat, channel, supergroup
 
     title = Column(String(255), nullable=True, index=True)
     username = Column(String(100), nullable=True, index=True)
@@ -41,6 +43,13 @@ class Chat(Base):
         nullable=False,
     )
 
+    # Computed properties for message counts
+    messages_count = column_property(select(func.count()).select_from(Message.__table__).where(Message.chat_id == id).scalar_subquery())
+
+    enriched_messages_count = column_property(
+        select(func.count()).select_from(EnrichedMessage.__table__).where(EnrichedMessage.chat_id == id).scalar_subquery()
+    )
+
     __table_args__ = (
         Index("ix_chats_type_verified", "chat_type", "is_verified"),
         Index("ix_chats_username", "username"),
@@ -48,7 +57,4 @@ class Chat(Base):
     )
 
     def __repr__(self):
-        return (
-            f"<Chat(id={self.id}, title='{self.title}', "
-            f"type='{self.chat_type}')>"
-        )
+        return f"<Chat(id={self.id}, title='{self.title}', " f"type='{self.chat_type}')>"

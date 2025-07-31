@@ -37,9 +37,3 @@ class EnrichedMessageRepository:
                 )
             )
             return result.scalar_one_or_none()
-
-    async def get_all(self) -> list[EnrichedMessage]:
-        """Get all enriched messages"""
-        async with self.session.begin():
-            result = await self.session.execute(select(EnrichedMessage))
-            return result.scalars().all()
