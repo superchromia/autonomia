@@ -1,15 +1,19 @@
-from sqlalchemy import BigInteger, Boolean, Column, DateTime, Float, String
+from sqlalchemy import BigInteger, Boolean, Column, DateTime, Float, ForeignKey, String
+from sqlalchemy.orm import relationship
 
 from models.base import Base
 
 
 class ChatConfig(Base):
     __tablename__ = "chat_configs"
-    chat_id = Column(BigInteger, primary_key=True)
+    chat_id = Column(BigInteger, ForeignKey("chats.id"), primary_key=True)
     save_messages = Column(Boolean, nullable=False, default=True)
     load_from_date = Column(DateTime, nullable=True)
     system_prompt = Column(String, nullable=True)
     answer_threshold = Column(Float, nullable=True)
+
+    # Relationships
+    chat = relationship("Chat", back_populates="config")
 
     def __repr__(self):
         return (

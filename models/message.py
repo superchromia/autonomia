@@ -3,11 +3,13 @@ from sqlalchemy import (
     Boolean,
     Column,
     DateTime,
+    ForeignKey,
     Index,
     PrimaryKeyConstraint,
     String,
 )
 from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
 from models.base import Base
@@ -17,14 +19,12 @@ class Message(Base):
     __tablename__ = "messages"
 
     message_id = Column(BigInteger, nullable=False)
-    chat_id = Column(BigInteger, nullable=False)
+    chat_id = Column(BigInteger, ForeignKey("chats.id"), nullable=True)
     sender_id = Column(BigInteger, nullable=True, index=True)
 
     # Important metadata
     date = Column(DateTime(timezone=True), nullable=False, index=True)
-    message_type = Column(
-        String(50), nullable=False, default="text", index=True
-    )
+    message_type = Column(String(50), nullable=False, default="text", index=True)
     is_read = Column(Boolean, default=False, index=True)
     is_deleted = Column(Boolean, default=False)
 
@@ -44,6 +44,9 @@ class Message(Base):
         nullable=False,
     )
 
+    # Relationships
+    chat = relationship("Chat", back_populates="messages")
+
     # Indexes for performance
     __table_args__ = (
         PrimaryKeyConstraint("message_id", "chat_id"),
@@ -54,7 +57,4 @@ class Message(Base):
     )
 
     def __repr__(self):
-        return (
-            f"<Message(message_id={self.message_id}, "
-            f"chat_id={self.chat_id}, sender_id={self.sender_id})>"
-        )
+        return f"<Message(message_id={self.message_id}, " f"chat_id={self.chat_id}, sender_id={self.sender_id})>"

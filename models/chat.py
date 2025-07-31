@@ -9,7 +9,7 @@ from sqlalchemy import (
     select,
 )
 from sqlalchemy.dialects.postgresql import JSONB
-from sqlalchemy.orm import column_property
+from sqlalchemy.orm import column_property, relationship
 from sqlalchemy.sql import func
 
 from models.base import Base
@@ -49,6 +49,11 @@ class Chat(Base):
     enriched_messages_count = column_property(
         select(func.count()).select_from(EnrichedMessage.__table__).where(EnrichedMessage.chat_id == id).scalar_subquery()
     )
+
+    # Relationships
+    messages = relationship("Message", back_populates="chat")
+    enriched_messages = relationship("EnrichedMessage", back_populates="chat")
+    config = relationship("ChatConfig", back_populates="chat", uselist=False)
 
     __table_args__ = (
         Index("ix_chats_type_verified", "chat_type", "is_verified"),

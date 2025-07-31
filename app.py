@@ -44,15 +44,15 @@ async def lifespan(app: FastAPI):
 
     scheduler.add_job(
         fetch_all_messages_job,
-        CronTrigger.from_crontab("0 * * * *"),
+        CronTrigger.from_crontab("1/10 * * * *"),
     )
     scheduler.add_job(
         sync_dialogs_job,
-        CronTrigger.from_crontab("30 * * * *"),
+        CronTrigger.from_crontab("3/10 * * * *"),
     )
     scheduler.add_job(
         enrich_old_messages_job,
-        CronTrigger.from_crontab("* * * * *"),
+        CronTrigger.from_crontab("*/5 * * * *"),
     )
 
     scheduler.start()
