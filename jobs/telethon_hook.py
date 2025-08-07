@@ -40,35 +40,67 @@ async def new_message_handler(event: events.NewMessage.Event):
             )
             session.add(db_message)
 
-            # Save chat
-            db_chat = Chat(
-                id=chat.id,
-                chat_type=chat.__class__.__name__,
-                title=getattr(chat, "title", None),
-                username=getattr(chat, "username", None),
-                is_verified=getattr(chat, "verified", False),
-                is_scam=getattr(chat, "scam", False),
-                is_fake=getattr(chat, "fake", False),
-                member_count=getattr(chat, "participants_count", 0),
-                raw_data=safe_telegram_to_dict(chat),
-            )
-            session.add(db_chat)
+            # Check if chat already exists
+            result = await session.execute(select(Chat).where(Chat.id == chat.id))
+            existing_chat = result.scalar_one_or_none()
+
+            if existing_chat:
+                # Update existing chat
+                existing_chat.chat_type = chat.__class__.__name__
+                existing_chat.title = getattr(chat, "title", None)
+                existing_chat.username = getattr(chat, "username", None)
+                existing_chat.is_verified = getattr(chat, "verified", False)
+                existing_chat.is_scam = getattr(chat, "scam", False)
+                existing_chat.is_fake = getattr(chat, "fake", False)
+                existing_chat.member_count = getattr(chat, "participants_count", 0)
+                existing_chat.raw_data = safe_telegram_to_dict(chat)
+            else:
+                # Create new chat
+                db_chat = Chat(
+                    id=chat.id,
+                    chat_type=chat.__class__.__name__,
+                    title=getattr(chat, "title", None),
+                    username=getattr(chat, "username", None),
+                    is_verified=getattr(chat, "verified", False),
+                    is_scam=getattr(chat, "scam", False),
+                    is_fake=getattr(chat, "fake", False),
+                    member_count=getattr(chat, "participants_count", 0),
+                    raw_data=safe_telegram_to_dict(chat),
+                )
+                session.add(db_chat)
 
             # Save user
             if user:
-                db_user = DBUser(
-                    id=user.id,
-                    first_name=getattr(user, "first_name", None),
-                    last_name=getattr(user, "last_name", None),
-                    username=getattr(user, "username", None),
-                    is_bot=getattr(user, "bot", False),
-                    is_verified=getattr(user, "verified", False),
-                    is_scam=getattr(user, "scam", False),
-                    is_fake=getattr(user, "fake", False),
-                    is_premium=getattr(user, "premium", False),
-                    raw_data=safe_telegram_to_dict(user),
-                )
-                session.add(db_user)
+                # Check if user already exists
+                result = await session.execute(select(DBUser).where(DBUser.id == user.id))
+                existing_user = result.scalar_one_or_none()
+
+                if existing_user:
+                    # Update existing user
+                    existing_user.first_name = getattr(user, "first_name", None)
+                    existing_user.last_name = getattr(user, "last_name", None)
+                    existing_user.username = getattr(user, "username", None)
+                    existing_user.is_bot = getattr(user, "bot", False)
+                    existing_user.is_verified = getattr(user, "verified", False)
+                    existing_user.is_scam = getattr(user, "scam", False)
+                    existing_user.is_fake = getattr(user, "fake", False)
+                    existing_user.is_premium = getattr(user, "premium", False)
+                    existing_user.raw_data = safe_telegram_to_dict(user)
+                else:
+                    # Create new user
+                    db_user = DBUser(
+                        id=user.id,
+                        first_name=getattr(user, "first_name", None),
+                        last_name=getattr(user, "last_name", None),
+                        username=getattr(user, "username", None),
+                        is_bot=getattr(user, "bot", False),
+                        is_verified=getattr(user, "verified", False),
+                        is_scam=getattr(user, "scam", False),
+                        is_fake=getattr(user, "fake", False),
+                        is_premium=getattr(user, "premium", False),
+                        raw_data=safe_telegram_to_dict(user),
+                    )
+                    session.add(db_user)
 
             await session.commit()
             await tg.send_read_acknowledge(chat, message)
