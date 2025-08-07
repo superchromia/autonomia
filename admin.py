@@ -121,8 +121,8 @@ class ChatConfigAdmin(ModelView, model=ChatConfig):
 
     column_sortable_list: ClassVar = [
         ChatConfig.chat_id,
-        ChatConfig.save_messages,
-        ChatConfig.load_from_date,
+        ChatConfig.enrich_messages,
+        ChatConfig.recognize_photo,
     ]
 
     form_include_pk = True

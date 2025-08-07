@@ -4,6 +4,7 @@ from typing import AsyncGenerator, Generator
 
 import pytest
 import pytest_asyncio
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.pool import StaticPool
 
@@ -37,7 +38,7 @@ async def test_engine(test_database_url: str):
     # Create tables without JSONB columns for testing
     async with engine.begin() as conn:
         # Create simplified tables for testing
-        await conn.run_sync(lambda sync_conn: sync_conn.execute("""
+        await conn.run_sync(lambda sync_conn: sync_conn.execute(text("""
             CREATE TABLE IF NOT EXISTS chats (
                 id BIGINT PRIMARY KEY,
                 chat_type VARCHAR(20) NOT NULL,
@@ -51,9 +52,9 @@ async def test_engine(test_database_url: str):
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
-        """))
+        """)))
         
-        await conn.run_sync(lambda sync_conn: sync_conn.execute("""
+        await conn.run_sync(lambda sync_conn: sync_conn.execute(text("""
             CREATE TABLE IF NOT EXISTS users (
                 id BIGINT PRIMARY KEY,
                 username VARCHAR(100),
@@ -68,9 +69,9 @@ async def test_engine(test_database_url: str):
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
-        """))
+        """)))
         
-        await conn.run_sync(lambda sync_conn: sync_conn.execute("""
+        await conn.run_sync(lambda sync_conn: sync_conn.execute(text("""
             CREATE TABLE IF NOT EXISTS messages (
                 message_id BIGINT,
                 chat_id BIGINT,
@@ -84,9 +85,9 @@ async def test_engine(test_database_url: str):
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 PRIMARY KEY (message_id, chat_id)
             )
-        """))
+        """)))
         
-        await conn.run_sync(lambda sync_conn: sync_conn.execute("""
+        await conn.run_sync(lambda sync_conn: sync_conn.execute(text("""
             CREATE TABLE IF NOT EXISTS messages_enriched (
                 chat_id BIGINT,
                 message_id BIGINT,
@@ -95,19 +96,15 @@ async def test_engine(test_database_url: str):
                 embeddings TEXT,
                 PRIMARY KEY (chat_id, message_id)
             )
-        """))
+        """)))
         
-        await conn.run_sync(lambda sync_conn: sync_conn.execute("""
+        await conn.run_sync(lambda sync_conn: sync_conn.execute(text("""
             CREATE TABLE IF NOT EXISTS chat_configs (
                 chat_id BIGINT PRIMARY KEY,
-                save_messages BOOLEAN NOT NULL,
                 enrich_messages BOOLEAN NOT NULL,
-                recognize_photo BOOLEAN NOT NULL,
-                load_from_date TIMESTAMP,
-                system_prompt VARCHAR,
-                answer_threshold FLOAT
+                recognize_photo BOOLEAN NOT NULL
             )
-        """))
+        """)))
     
     yield engine
     

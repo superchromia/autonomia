@@ -1,6 +1,4 @@
 import pytest
-from sqlalchemy import Text
-from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.future import select
 
 from models.chat import Chat
@@ -8,37 +6,6 @@ from models.chat_config import ChatConfig
 from models.message import Message
 from models.messages_enriched import EnrichedMessage
 from models.user import User
-
-
-# Create test-specific models that use Text instead of JSONB
-class TestChat(Chat):
-    """Test version of Chat model using Text instead of JSONB."""
-
-    __tablename__ = "chats"
-
-    # Override raw_data to use Text instead of JSONB
-    raw_data = Chat.__table__.c.raw_data.copy()
-    raw_data.type = Text()
-
-
-class TestMessage(Message):
-    """Test version of Message model using Text instead of JSONB."""
-
-    __tablename__ = "messages"
-
-    # Override raw_data to use Text instead of JSONB
-    raw_data = Message.__table__.c.raw_data.copy()
-    raw_data.type = Text()
-
-
-class TestUser(User):
-    """Test version of User model using Text instead of JSONB."""
-
-    __tablename__ = "users"
-
-    # Override raw_data to use Text instead of JSONB
-    raw_data = User.__table__.c.raw_data.copy()
-    raw_data.type = Text()
 
 
 class TestChatModel:
@@ -50,11 +17,13 @@ class TestChatModel:
         # Convert raw_data to JSON string for Text field
         sample_chat_data["raw_data"] = '{"id": 123456789, "title": "Test Channel"}'
 
-        chat = TestChat(**sample_chat_data)
+        chat = Chat(**sample_chat_data)
         test_session.add(chat)
         await test_session.commit()
 
-        result = await test_session.execute(select(TestChat).where(TestChat.id == sample_chat_data["id"]))
+        result = await test_session.execute(
+            select(Chat).where(Chat.id == sample_chat_data["id"])
+        )
         saved_chat = result.scalar_one()
 
         assert saved_chat.id == sample_chat_data["id"]
@@ -68,7 +37,7 @@ class TestChatModel:
         # Convert raw_data to JSON string for Text field
         sample_chat_data["raw_data"] = '{"id": 123456789, "title": "Test Channel"}'
 
-        chat = TestChat(**sample_chat_data)
+        chat = Chat(**sample_chat_data)
         test_session.add(chat)
         await test_session.commit()
 
@@ -87,11 +56,13 @@ class TestUserModel:
         # Convert raw_data to JSON string for Text field
         sample_user_data["raw_data"] = '{"id": 987654321, "first_name": "Test", "last_name": "User"}'
 
-        user = TestUser(**sample_user_data)
+        user = User(**sample_user_data)
         test_session.add(user)
         await test_session.commit()
 
-        result = await test_session.execute(select(TestUser).where(TestUser.id == sample_user_data["id"]))
+        result = await test_session.execute(
+            select(User).where(User.id == sample_user_data["id"])
+        )
         saved_user = result.scalar_one()
 
         assert saved_user.id == sample_user_data["id"]
@@ -104,7 +75,7 @@ class TestUserModel:
         # Convert raw_data to JSON string for Text field
         sample_user_data["raw_data"] = '{"id": 987654321, "first_name": "Test", "last_name": "User"}'
 
-        user = TestUser(**sample_user_data)
+        user = User(**sample_user_data)
         test_session.add(user)
         await test_session.commit()
 
@@ -116,7 +87,7 @@ class TestUserModel:
         # Convert raw_data to JSON string for Text field
         sample_user_data["raw_data"] = '{"id": 987654321, "first_name": "Test", "last_name": "User"}'
 
-        user = TestUser(**sample_user_data)
+        user = User(**sample_user_data)
         test_session.add(user)
         await test_session.commit()
 
@@ -132,12 +103,15 @@ class TestMessageModel:
         # Convert raw_data to JSON string for Text field
         sample_message_data["raw_data"] = '{"id": 111, "message": "Test message"}'
 
-        message = TestMessage(**sample_message_data)
+        message = Message(**sample_message_data)
         test_session.add(message)
         await test_session.commit()
 
         result = await test_session.execute(
-            select(TestMessage).where(TestMessage.message_id == sample_message_data["message_id"], TestMessage.chat_id == sample_message_data["chat_id"])
+            select(Message).where(
+                Message.message_id == sample_message_data["message_id"],
+                Message.chat_id == sample_message_data["chat_id"]
+            )
         )
         saved_message = result.scalar_one()
 
@@ -151,7 +125,7 @@ class TestMessageModel:
         # Convert raw_data to JSON string for Text field
         sample_message_data["raw_data"] = '{"id": 111, "message": "Test message"}'
 
-        message = TestMessage(**sample_message_data)
+        message = Message(**sample_message_data)
         test_session.add(message)
         await test_session.commit()
 
@@ -168,7 +142,7 @@ class TestEnrichedMessageModel:
         """Test creating a new enriched message."""
         # First create a chat
         sample_chat_data["raw_data"] = '{"id": 123456789, "title": "Test Channel"}'
-        chat = TestChat(**sample_chat_data)
+        chat = Chat(**sample_chat_data)
         test_session.add(chat)
         await test_session.commit()
 
@@ -187,7 +161,8 @@ class TestEnrichedMessageModel:
 
         result = await test_session.execute(
             select(EnrichedMessage).where(
-                EnrichedMessage.chat_id == enriched_message_data["chat_id"], EnrichedMessage.message_id == enriched_message_data["message_id"]
+                EnrichedMessage.chat_id == enriched_message_data["chat_id"],
+                EnrichedMessage.message_id == enriched_message_data["message_id"]
             )
         )
         saved_enriched_message = result.scalar_one()
@@ -206,28 +181,26 @@ class TestChatConfigModel:
         """Test creating a new chat config."""
         # First create a chat
         sample_chat_data["raw_data"] = '{"id": 123456789, "title": "Test Channel"}'
-        chat = TestChat(**sample_chat_data)
+        chat = Chat(**sample_chat_data)
         test_session.add(chat)
         await test_session.commit()
 
         # Create chat config
         chat_config_data = {
             "chat_id": sample_chat_data["id"],
-            "save_messages": True,
             "enrich_messages": True,
             "recognize_photo": False,
-            "system_prompt": "Test prompt",
-            "answer_threshold": 0.8,
         }
 
         chat_config = ChatConfig(**chat_config_data)
         test_session.add(chat_config)
         await test_session.commit()
 
-        result = await test_session.execute(select(ChatConfig).where(ChatConfig.chat_id == chat_config_data["chat_id"]))
+        result = await test_session.execute(
+            select(ChatConfig).where(ChatConfig.chat_id == chat_config_data["chat_id"])
+        )
         saved_chat_config = result.scalar_one()
 
         assert saved_chat_config.chat_id == chat_config_data["chat_id"]
-        assert saved_chat_config.save_messages == chat_config_data["save_messages"]
         assert saved_chat_config.enrich_messages == chat_config_data["enrich_messages"]
-        assert saved_chat_config.system_prompt == chat_config_data["system_prompt"]
+        assert saved_chat_config.recognize_photo == chat_config_data["recognize_photo"]
