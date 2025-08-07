@@ -7,6 +7,9 @@ from starlette.requests import Request
 from config import config
 from models.chat import Chat
 from models.chat_config import ChatConfig
+from models.media import Media
+from models.message import Message
+from models.messages_enriched import EnrichedMessage
 from models.user import User
 
 
@@ -109,6 +112,8 @@ class ChatConfigAdmin(ModelView, model=ChatConfig):
     column_list: ClassVar = [
         ChatConfig.chat_id,
         ChatConfig.save_messages,
+        ChatConfig.enrich_messages,
+        ChatConfig.recognize_photo,
         ChatConfig.load_from_date,
         ChatConfig.system_prompt,
         ChatConfig.answer_threshold,
@@ -131,6 +136,136 @@ class ChatConfigAdmin(ModelView, model=ChatConfig):
     can_create = True
     can_edit = True
     can_delete = True
+
+
+class MediaAdmin(ModelView, model=Media):
+    """Admin panel for Media model"""
+
+    name = "Media"
+    name_plural = "Media"
+    icon = "fa-solid fa-image"
+
+    column_list: ClassVar = [
+        Media.file_reference,
+        Media.chat_id,
+        Media.message_id,
+        Media.media_type,
+        Media.text_description,
+        Media.created_at,
+        Media.updated_at,
+    ]
+
+    column_searchable_list: ClassVar = [
+        Media.file_reference,
+        Media.chat_id,
+        Media.message_id,
+        Media.media_type,
+        Media.text_description,
+    ]
+
+    column_sortable_list: ClassVar = [
+        Media.file_reference,
+        Media.chat_id,
+        Media.message_id,
+        Media.media_type,
+        Media.created_at,
+        Media.updated_at,
+    ]
+
+    column_default_sort = ("created_at", True)
+
+    can_create = True
+    can_edit = True
+    can_delete = True
+
+    form_excluded_columns: ClassVar = ["created_at", "updated_at"]
+
+
+class MessageAdmin(ModelView, model=Message):
+    """Admin panel for Message model"""
+
+    name = "Message"
+    name_plural = "Messages"
+    icon = "fa-solid fa-comment"
+
+    column_list: ClassVar = [
+        Message.message_id,
+        Message.chat_id,
+        Message.sender_id,
+        Message.date,
+        Message.message_type,
+        Message.is_read,
+        Message.is_deleted,
+        Message.created_at,
+        Message.updated_at,
+    ]
+
+    column_searchable_list: ClassVar = [
+        Message.message_id,
+        Message.chat_id,
+        Message.sender_id,
+        Message.message_type,
+    ]
+
+    column_sortable_list: ClassVar = [
+        Message.message_id,
+        Message.chat_id,
+        Message.sender_id,
+        Message.date,
+        Message.message_type,
+        Message.is_read,
+        Message.created_at,
+        Message.updated_at,
+    ]
+
+    column_default_sort = ("date", True)
+
+    can_create = False
+    can_edit = True
+    can_delete = False
+
+    form_excluded_columns: ClassVar = ["raw_data", "created_at", "updated_at"]
+
+
+class EnrichedMessageAdmin(ModelView, model=EnrichedMessage):
+    """Admin panel for EnrichedMessage model"""
+
+    name = "Enriched Message"
+    name_plural = "Enriched Messages"
+    icon = "fa-solid fa-brain"
+
+    column_list: ClassVar = [
+        EnrichedMessage.chat_id,
+        EnrichedMessage.message_id,
+        EnrichedMessage.context,
+        EnrichedMessage.meaning,
+        "has_embeddings",
+    ]
+
+    column_searchable_list: ClassVar = [
+        EnrichedMessage.chat_id,
+        EnrichedMessage.message_id,
+        EnrichedMessage.context,
+        EnrichedMessage.meaning,
+    ]
+
+    column_sortable_list: ClassVar = [
+        EnrichedMessage.chat_id,
+        EnrichedMessage.message_id,
+    ]
+
+    column_default_sort = ("chat_id", True)
+
+    can_create = False
+    can_edit = True
+    can_delete = False
+
+    form_excluded_columns: ClassVar = ["embeddings"]
+    column_details_exclude_list: ClassVar = ["embeddings"]
+
+    def has_embeddings(self, obj: EnrichedMessage) -> str:
+        """Check if message has embeddings"""
+        return "Yes" if obj.embeddings is not None else "No"
 
 
 class AdminAuth(AuthenticationBackend):
@@ -168,5 +303,8 @@ def setup_admin(app, engine):
     admin.add_view(ChatAdmin)
     admin.add_view(UserAdmin)
     admin.add_view(ChatConfigAdmin)
+    admin.add_view(MediaAdmin)
+    admin.add_view(MessageAdmin)
+    admin.add_view(EnrichedMessageAdmin)
 
     return admin

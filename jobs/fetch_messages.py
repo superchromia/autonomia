@@ -1,35 +1,23 @@
-import asyncio
 import logging
 from collections.abc import AsyncGenerator
-from datetime import UTC
 from typing import TypeVar
 
+from sqlalchemy.future import select
 from telethon import TelegramClient, types
 
 from dependency import dependency
-from repositories.chat_config_repository import ChatConfigRepository
-from repositories.message_repository import MessageRepository
+from models.message import Message
+from utils.telegram_serializer import safe_telegram_to_dict
 
 logger = logging.getLogger("fetch_messages")
 
 T = TypeVar("T")
 
 
-async def messages_generator(
-    client: TelegramClient, chat_id: int, offset_id: int
-):
-
+async def messages_generator(client: TelegramClient, chat_id: int, offset_id: int):
     try:
-        logger.info(
-            f"Fetching messages for chat_id={chat_id}, offset_id={offset_id}"
-        )
-        stop_fetching = True
-        async for msg in client.iter_messages(
-            entity=chat_id,
-            offset_id=offset_id,
-        ):
-            offset_id = max(offset_id, msg.id)
-            stop_fetching = False
+        logger.info(f"Fetching messages for chat_id={chat_id}, offset_id={offset_id}")
+        async for msg in client.iter_messages(entity=chat_id, offset_id=offset_id):
             yield msg
 
     except Exception as e:
@@ -37,9 +25,7 @@ async def messages_generator(
         raise
 
 
-async def take_batch(
-    generator: AsyncGenerator[T, None], batch_size: int = 1000
-) -> AsyncGenerator[list[T], None]:
+async def take_batch(generator: AsyncGenerator[T, None], batch_size: int = 1000) -> AsyncGenerator[list[T], None]:
     batch = []
     async for item in generator:
         batch.append(item)
@@ -60,28 +46,29 @@ async def fetch_all_messages_job():
     logger.info("Fetch job started")
 
     async for session in dependency.get_session():
-        # Get repositories
-        chat_config_repo = ChatConfigRepository(session)
-        message_repo = MessageRepository(session)
-
-        # Get all chat configurations where save_messages=True
-        chat_configs = await chat_config_repo.list_all()
-        active_configs = {
-            cfg.chat_id: cfg for cfg in chat_configs if cfg.save_messages
-        }
-
-        if not active_configs:
-            logger.info("No active chat configs found - nothing to fetch")
-            return
-
-        # Process each active chat
         async for dialog in client.iter_dialogs():
             dialog: types.Dialog
             chat_id = dialog.entity.id
-            if chat_id not in active_configs:
-                continue
-            offset_id = await message_repo.get_first_message_id(chat_id)
+
+            # Get first message ID for this chat
+            result = await session.execute(select(Message.message_id).where(Message.chat_id == chat_id).order_by(Message.message_id.desc()).limit(1))
+            first_msg = result.scalar_one_or_none()
+            offset_id = first_msg if first_msg else 0
             messages_gen = messages_generator(client, chat_id, offset_id)
+
             async for batch in take_batch(messages_gen):
-                await message_repo.save_messages_batch(batch)
+                # Save messages batch
+                for msg in batch:
+                    db_message = Message(
+                        message_id=msg.id,
+                        chat_id=chat_id,
+                        sender_id=msg.sender_id if msg.sender_id else None,
+                        date=msg.date,
+                        message_type=(msg.media.__class__.__name__ if msg.media else "text"),
+                        is_read=False,
+                        is_deleted=False,
+                        raw_data=safe_telegram_to_dict(msg),
+                    )
+                    session.add(db_message)
+                await session.commit()
                 logger.info(f"Saved messages batch: {len(batch)}")

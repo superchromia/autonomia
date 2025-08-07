@@ -53,6 +53,7 @@ class Chat(Base):
     # Relationships
     messages = relationship("Message", back_populates="chat")
     enriched_messages = relationship("EnrichedMessage", back_populates="chat")
+    media = relationship("Media", back_populates="chat")
     config = relationship("ChatConfig", back_populates="chat", uselist=False)
 
     __table_args__ = (

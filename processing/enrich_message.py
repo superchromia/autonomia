@@ -5,10 +5,10 @@ import os
 from openai import AsyncOpenAI
 
 from dependency import dependency
-from repositories.chat_repository import Chat, ChatRepository
-from repositories.enriched_message_repository import EnrichedMessageRepository
-from repositories.message_repository import Message, MessageRepository
-from repositories.user_repository import User, UserRepository
+from models.chat import Chat
+from models.messages_enriched import EnrichedMessage
+from models.message import Message
+from models.user import User
 
 ai_client = AsyncOpenAI(
     base_url="https://api.studio.nebius.com/v1/",
@@ -52,34 +52,53 @@ def format_message(raw_data, username):
         return f'Сообщение {msg_id}: от {username}: "{msg_text}"'
 
 
-async def collect_message_context(message_repo: MessageRepository, user_repo: UserRepository, chat_id: int, message_id: int) -> list[Message]:
-    message = await message_repo.get_message(message_id, chat_id)
-    thread_messages = await message_repo.get_messages_thread(chat_id, message_id)
-    previous_messages = await message_repo.get_previous_n_messages(chat_id, message_id, 50)
-    usernames = await user_repo.get_usernames()
-
-    thread_messages_formatted = "\n".join(format_message(msg.raw_data, usernames.get(msg.sender_id)) for msg in thread_messages)
-    previous_messages_formatted = "\n".join(format_message(msg.raw_data, usernames.get(msg.sender_id)) for msg in previous_messages)
+async def collect_message_context(session, chat_id: int, message_id: int) -> str:
+    from sqlalchemy.future import select
+    
+    # Get current message
+    result = await session.execute(
+        select(Message).where(
+            Message.chat_id == chat_id,
+            Message.message_id == message_id
+        )
+    )
+    message = result.scalar_one_or_none()
+    if not message:
+        return "Message not found"
+    
+    # Get previous messages
+    result = await session.execute(
+        select(Message).where(
+            Message.chat_id == chat_id,
+            Message.message_id < message_id
+        ).order_by(Message.message_id.desc()).limit(50)
+    )
+    previous_messages = result.scalars().all()
+    
+    # Get usernames
+    result = await session.execute(select(User))
+    users = result.scalars().all()
+    usernames = {}
+    for user in users:
+        username = user.username or f"{user.first_name} {user.last_name}".strip()
+        usernames[user.id] = username
+    
+    previous_messages_formatted = "\n".join(
+        format_message(msg.raw_data, usernames.get(msg.sender_id, "Unknown")) 
+        for msg in previous_messages
+    )
 
     return f"""
     ПРЕДЫДУЩИЕ СООБЩЕНИЯ:
     {previous_messages_formatted}
 
-    ВЕТКА СООБЩЕНИЙ ДО ТЕКУЩЕГО:
-    {thread_messages_formatted}
-
     ТЕКУЩЕЕ СООБЩЕНИЕ:
-    {format_message(message.raw_data, usernames.get(message.sender_id))}
+    {format_message(message.raw_data, usernames.get(message.sender_id, "Unknown"))}
     """
 
 
 async def process_message(session, chat_id: int, message_id: int) -> Message:
-    message_repo = MessageRepository(session)
-    chat_repo = ChatRepository(session)
-    user_repo = UserRepository(session)
-    enriched_message_repo = EnrichedMessageRepository(session)
-
-    context = await collect_message_context(message_repo, user_repo, chat_id=chat_id, message_id=message_id)
+    context = await collect_message_context(session, chat_id=chat_id, message_id=message_id)
     logger.info(f"Collected context for message {message_id} in chat {chat_id}")
     response = await ai_client.chat.completions.create(
         model="deepseek-ai/DeepSeek-V3",
@@ -126,12 +145,13 @@ async def process_message(session, chat_id: int, message_id: int) -> Message:
     logger.info(f"Collected embeddings for message {message_id} in chat {chat_id}")
     embeddings = embeddings_data.data[0].embedding
 
-    await enriched_message_repo.save(
-        dict(
-            chat_id=chat_id,
-            message_id=message_id,
-            context=data["context"],
-            meaning=data["meaning"],
-            embeddings=embeddings,
-        )
+    # Save enriched message
+    db_enriched_message = EnrichedMessage(
+        chat_id=chat_id,
+        message_id=message_id,
+        context=data["context"],
+        meaning=data["meaning"],
+        embeddings=embeddings,
     )
+    session.add(db_enriched_message)
+    await session.commit()

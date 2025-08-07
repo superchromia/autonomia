@@ -1,15 +1,17 @@
 import asyncio
 import logging
 
+from sqlalchemy.future import select
 from telethon import events
 from telethon.tl.custom.message import Message
 
 from dependency import dependency
+from models.chat import Chat
+from models.chat_config import ChatConfig
+from models.message import Message as DBMessage
+from models.user import User as DBUser
 from processing.enrich_message import process_message
-from repositories.chat_repository import ChatRepository
-from repositories.event_repository import EventRepository
-from repositories.message_repository import MessageRepository
-from repositories.user_repository import UserRepository
+from utils.telegram_serializer import safe_telegram_to_dict
 
 logger = logging.getLogger("telethon_hook")
 
@@ -17,37 +19,67 @@ tg = dependency.telegram_client
 
 
 @tg.on(events.NewMessage)
-@tg.on(events.MessageEdited)
-@tg.on(events.MessageDeleted)
-@tg.on(events.ChatAction)
-async def events_handler(event):
-    async for session in dependency.get_session():
-        event_repo = EventRepository(session)
-        try:
-            logger.debug(f"Received event: {event}")
-            await event_repo.save_event(event)
-        except Exception as e:
-            logger.exception(f"Failed to save event: {e}")
-
-
-@tg.on(events.NewMessage)
 async def new_message_handler(event: events.NewMessage.Event):
     logger.debug(f"Received NewMessage: {event}")
     async for session in dependency.get_session():
-        message_repo = MessageRepository(session)
-        user_repo = UserRepository(session)
-        chat_repo = ChatRepository(session)
         try:
             message: Message = event.message
             chat = await message.get_chat()
             user = await message.get_sender()
 
-            await message_repo.save_message(message)
-            await chat_repo.save_chat(chat)
-            await user_repo.save_user(user)
+            # Save message
+            db_message = DBMessage(
+                message_id=message.id,
+                chat_id=chat.id,
+                sender_id=user.id if user else None,
+                date=message.date,
+                message_type=message.media.__class__.__name__ if message.media else "text",
+                is_read=False,
+                is_deleted=False,
+                raw_data=safe_telegram_to_dict(message),
+            )
+            session.add(db_message)
+
+            # Save chat
+            db_chat = Chat(
+                id=chat.id,
+                chat_type=chat.__class__.__name__,
+                title=getattr(chat, "title", None),
+                username=getattr(chat, "username", None),
+                is_verified=getattr(chat, "verified", False),
+                is_scam=getattr(chat, "scam", False),
+                is_fake=getattr(chat, "fake", False),
+                member_count=getattr(chat, "participants_count", 0),
+                raw_data=safe_telegram_to_dict(chat),
+            )
+            session.add(db_chat)
+
+            # Save user
+            if user:
+                db_user = DBUser(
+                    id=user.id,
+                    first_name=getattr(user, "first_name", None),
+                    last_name=getattr(user, "last_name", None),
+                    username=getattr(user, "username", None),
+                    is_bot=getattr(user, "bot", False),
+                    is_verified=getattr(user, "verified", False),
+                    is_scam=getattr(user, "scam", False),
+                    is_fake=getattr(user, "fake", False),
+                    is_premium=getattr(user, "premium", False),
+                    raw_data=safe_telegram_to_dict(user),
+                )
+                session.add(db_user)
+
+            await session.commit()
             await tg.send_read_acknowledge(chat, message)
 
-            await process_message(session, chat_id=chat.id, message_id=message.id)
+            # Check if enrichment is enabled for this chat
+            result = await session.execute(select(ChatConfig).where(ChatConfig.chat_id == chat.id))
+            chat_config = result.scalar_one_or_none()
+            if chat_config and chat_config.enrich_messages:
+                await process_message(session, chat_id=chat.id, message_id=message.id)
+            else:
+                logger.debug(f"Message enrichment disabled for chat {chat.id}")
 
         except Exception as e:
             logger.exception(f"Failed to save message: {e}")
@@ -57,10 +89,14 @@ async def new_message_handler(event: events.NewMessage.Event):
 async def message_edited_handler(event: events.MessageEdited.Event):
     logger.debug(f"Received MessageEdited: {event}")
     async for session in dependency.get_session():
-        message_repo = MessageRepository(session)
         try:
             logger.info(f"Received : {event}")
-            await message_repo.save_message(event.message)
+            # Update message in database
+            result = await session.execute(select(DBMessage).where(DBMessage.chat_id == event.chat_id, DBMessage.message_id == event.message.id))
+            db_message = result.scalar_one_or_none()
+            if db_message:
+                db_message.raw_data = safe_telegram_to_dict(event.message)
+                await session.commit()
         except Exception as e:
             logger.exception(f"Failed to update message: {e}")
 
@@ -70,7 +106,10 @@ async def message_deleted_handler(event: events.MessageDeleted.Event):
     logger.debug(f"Received MessageDeleted: {event}")
     async for session in dependency.get_session():
         try:
-            message_repo = MessageRepository(session)
-            await message_repo.delete_messages(chat_id=event.chat_id, deleted_ids=event.deleted_ids)
+            # Mark messages as deleted
+            await session.execute(
+                DBMessage.__table__.update().where(DBMessage.chat_id == event.chat_id, DBMessage.message_id.in_(event.deleted_ids)).values(is_deleted=True)
+            )
+            await session.commit()
         except Exception as e:
             logger.exception(f"Failed to delete message: {e}")

@@ -2,11 +2,12 @@ import asyncio
 import logging
 from typing import List
 
+from sqlalchemy.future import select
+
 from dependency import dependency
+from models.chat_config import ChatConfig
+from models.message import Message
 from processing.enrich_message import process_message
-from repositories.chat_config_repository import ChatConfigRepository
-from repositories.enriched_message_repository import EnrichedMessageRepository
-from repositories.message_repository import MessageRepository
 
 logger = logging.getLogger("enrich_old_messages")
 
@@ -16,18 +17,19 @@ async def get_unenriched_messages(
 ) -> List[tuple[int, int]]:
 
     async for session in dependency.get_session():
-        chat_config_repo = ChatConfigRepository(session)
-        message_repo = MessageRepository(session)
+        # Get chat configs with enrich_messages enabled
+        result = await session.execute(select(ChatConfig))
+        chat_configs = result.scalars().all()
+        active_configs = [cfg.chat_id for cfg in chat_configs if cfg.enrich_messages]
 
-        chat_configs = await chat_config_repo.list_all()
-        active_configs = [cfg.chat_id for cfg in chat_configs if cfg.save_messages]
-        active_configs = [1501441278]
-    unenriched = []
-    for chat_id in active_configs:
-        msg_ids = await message_repo.get_unenriched_messages(chat_id=chat_id, limit=limit)
-        for msg_id in msg_ids:
-            unenriched.append((chat_id, msg_id))
-    return unenriched
+        unenriched = []
+        for chat_id in active_configs:
+            # Get unenriched messages for this chat
+            result = await session.execute(select(Message.message_id).where(Message.chat_id == chat_id).limit(limit))
+            msg_ids = result.scalars().all()
+            for msg_id in msg_ids:
+                unenriched.append((chat_id, msg_id))
+        return unenriched
 
 
 async def enrich_old_messages_job(limit: int = 100):
