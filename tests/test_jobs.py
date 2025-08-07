@@ -1,4 +1,5 @@
 import pytest
+from datetime import datetime
 from unittest.mock import AsyncMock, patch, MagicMock
 from telethon import types
 
@@ -43,18 +44,19 @@ class TestSyncDialogsJob:
         mock_dialog.entity.scam = sample_chat_data["is_scam"]
         mock_dialog.entity.fake = sample_chat_data["is_fake"]
         mock_dialog.entity.participants_count = sample_chat_data["member_count"]
+        mock_dialog.entity.to_dict = MagicMock(return_value=sample_chat_data["raw_data"])
         
         # Create proper async iterator for dialogs
         async def mock_iter_dialogs():
             yield mock_dialog
         
-        mock_client.iter_dialogs.return_value = mock_iter_dialogs()
+        mock_client.iter_dialogs = mock_iter_dialogs
         
         # Create proper async iterator for participants
         async def mock_iter_participants():
             return
         
-        mock_client.iter_participants.return_value = mock_iter_participants()
+        mock_client.iter_participants = mock_iter_participants
         
         # Run job
         await sync_dialogs_job()
@@ -84,9 +86,11 @@ class TestTelethonHook:
         mock_event = MagicMock()
         mock_message = MagicMock()
         mock_message.id = 123
-        mock_message.date = "2024-01-01T12:00:00Z"
+        mock_message.date = datetime.now()
         mock_message.media = None
         mock_message.raw_data = {"id": 123, "message": "Test message"}
+        mock_message.to_dict = MagicMock(return_value={"id": 123, "message": "Test message"})
+        mock_message.to_dict.return_value = {"id": 123, "message": "Test message"}
         mock_event.message = mock_message
         
         # Create mock chat
@@ -146,7 +150,7 @@ class TestTelethonHook:
             "message_id": 123,
             "chat_id": sample_chat_data["id"],
             "sender_id": sample_user_data["id"],
-            "date": "2024-01-01T12:00:00Z",
+            "date": datetime.now(),
             "message_type": "text",
             "is_read": False,
             "is_deleted": False,
@@ -163,6 +167,7 @@ class TestTelethonHook:
         mock_event.message = MagicMock()
         mock_event.message.id = 123
         mock_event.message.raw_data = {"id": 123, "message": "Updated message"}
+        mock_event.message.to_dict = MagicMock(return_value={"id": 123, "message": "Updated message"})
         
         # Run handler
         await message_edited_handler(mock_event)
@@ -191,7 +196,7 @@ class TestTelethonHook:
             "message_id": 123,
             "chat_id": sample_chat_data["id"],
             "sender_id": sample_user_data["id"],
-            "date": "2024-01-01T12:00:00Z",
+            "date": datetime.now(),
             "message_type": "text",
             "is_read": False,
             "is_deleted": False,
@@ -202,7 +207,7 @@ class TestTelethonHook:
             "message_id": 124,
             "chat_id": sample_chat_data["id"],
             "sender_id": sample_user_data["id"],
-            "date": "2024-01-01T12:01:00Z",
+            "date": datetime.now(),
             "message_type": "text",
             "is_read": False,
             "is_deleted": False,
@@ -266,7 +271,7 @@ class TestChatConfigIntegration:
         mock_event = MagicMock()
         mock_message = MagicMock()
         mock_message.id = 123
-        mock_message.date = "2024-01-01T12:00:00Z"
+        mock_message.date = datetime.now()
         mock_message.media = None
         mock_event.message = mock_message
         
@@ -311,7 +316,7 @@ class TestChatConfigIntegration:
         mock_event = MagicMock()
         mock_message = MagicMock()
         mock_message.id = 123
-        mock_message.date = "2024-01-01T12:00:00Z"
+        mock_message.date = datetime.now()
         mock_message.media = None
         mock_event.message = mock_message
         
