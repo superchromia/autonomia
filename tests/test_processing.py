@@ -1,5 +1,6 @@
 import json
 import pytest
+from datetime import datetime
 from unittest.mock import AsyncMock, patch
 
 from processing.enrich_message import (
@@ -97,7 +98,7 @@ class TestCollectMessageContext:
             "message_id": 100,
             "chat_id": sample_chat_data["id"],
             "sender_id": sample_user_data["id"],
-            "date": "2024-01-01T12:00:00Z",
+            "date": datetime.now(),
             "message_type": "text",
             "is_read": False,
             "is_deleted": False,
@@ -111,7 +112,7 @@ class TestCollectMessageContext:
             "message_id": 101,
             "chat_id": sample_chat_data["id"],
             "sender_id": sample_user_data["id"],
-            "date": "2024-01-01T12:01:00Z",
+            "date": datetime.now(),
             "message_type": "text",
             "is_read": False,
             "is_deleted": False,
@@ -152,8 +153,8 @@ class TestProcessMessage:
         mock_embeddings_response.data = [AsyncMock()]
         mock_embeddings_response.data[0].embedding = [0.1] * 4096
         
-        mock_ai_client.chat.completions.create.return_value = mock_response
-        mock_ai_client.embeddings.create.return_value = mock_embeddings_response
+        mock_ai_client.chat.completions.create = AsyncMock(return_value=mock_response)
+        mock_ai_client.embeddings.create = AsyncMock(return_value=mock_embeddings_response)
         
         # Create chat and user
         chat = Chat(**sample_chat_data)
@@ -167,7 +168,7 @@ class TestProcessMessage:
             "message_id": 100,
             "chat_id": sample_chat_data["id"],
             "sender_id": sample_user_data["id"],
-            "date": "2024-01-01T12:00:00Z",
+            "date": datetime.now(),
             "message_type": "text",
             "is_read": False,
             "is_deleted": False,
@@ -218,7 +219,7 @@ class TestProcessMessage:
             "message_id": 100,
             "chat_id": sample_chat_data["id"],
             "sender_id": sample_user_data["id"],
-            "date": "2024-01-01T12:00:00Z",
+            "date": datetime.now(),
             "message_type": "text",
             "is_read": False,
             "is_deleted": False,

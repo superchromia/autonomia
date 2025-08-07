@@ -1,5 +1,7 @@
 import asyncio
 import os
+import uuid
+from datetime import datetime
 from typing import AsyncGenerator, Generator
 
 import pytest
@@ -189,8 +191,9 @@ def mock_openai_client():
 @pytest.fixture
 def sample_chat_data():
     """Sample chat data for testing."""
+    chat_id = int(str(uuid.uuid4().int)[:10])  # Generate unique ID
     return {
-        "id": 123456789,
+        "id": chat_id,
         "chat_type": "Channel",
         "title": "Test Channel",
         "username": "testchannel",
@@ -199,7 +202,7 @@ def sample_chat_data():
         "is_fake": False,
         "member_count": 1000,
         "raw_data": {
-            "id": 123456789,
+            "id": chat_id,
             "title": "Test Channel",
             "username": "testchannel",
             "verified": False,
@@ -213,8 +216,9 @@ def sample_chat_data():
 @pytest.fixture
 def sample_user_data():
     """Sample user data for testing."""
+    user_id = int(str(uuid.uuid4().int)[:10])  # Generate unique ID
     return {
-        "id": 987654321,
+        "id": user_id,
         "first_name": "Test",
         "last_name": "User",
         "username": "testuser",
@@ -224,7 +228,7 @@ def sample_user_data():
         "is_fake": False,
         "is_premium": False,
         "raw_data": {
-            "id": 987654321,
+            "id": user_id,
             "first_name": "Test",
             "last_name": "User",
             "username": "testuser",
@@ -240,19 +244,22 @@ def sample_user_data():
 @pytest.fixture
 def sample_message_data():
     """Sample message data for testing."""
+    message_id = int(str(uuid.uuid4().int)[:10])  # Generate unique ID
+    chat_id = int(str(uuid.uuid4().int)[:10])  # Generate unique ID
+    sender_id = int(str(uuid.uuid4().int)[:10])  # Generate unique ID
     return {
-        "message_id": 111,
-        "chat_id": 123456789,
-        "sender_id": 987654321,
-        "date": "2024-01-01T12:00:00Z",
+        "message_id": message_id,
+        "chat_id": chat_id,
+        "sender_id": sender_id,
+        "date": datetime.now(),  # Use Python datetime object
         "message_type": "text",
         "is_read": False,
         "is_deleted": False,
         "raw_data": {
-            "id": 111,
-            "chat_id": 123456789,
-            "sender_id": 987654321,
-            "date": "2024-01-01T12:00:00Z",
+            "id": message_id,
+            "chat_id": chat_id,
+            "sender_id": sender_id,
+            "date": datetime.now(),
             "message": "Test message",
             "media": None,
         },

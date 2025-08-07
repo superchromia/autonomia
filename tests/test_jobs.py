@@ -44,8 +44,17 @@ class TestSyncDialogsJob:
         mock_dialog.entity.fake = sample_chat_data["is_fake"]
         mock_dialog.entity.participants_count = sample_chat_data["member_count"]
         
-        mock_client.iter_dialogs.return_value.__aiter__.return_value = [mock_dialog]
-        mock_client.iter_participants.return_value.__aiter__.return_value = []
+        # Create proper async iterator for dialogs
+        async def mock_iter_dialogs():
+            yield mock_dialog
+        
+        mock_client.iter_dialogs.return_value = mock_iter_dialogs()
+        
+        # Create proper async iterator for participants
+        async def mock_iter_participants():
+            return
+        
+        mock_client.iter_participants.return_value = mock_iter_participants()
         
         # Run job
         await sync_dialogs_job()
@@ -247,7 +256,6 @@ class TestChatConfigIntegration:
         
         chat_config = ChatConfig(
             chat_id=sample_chat_data["id"],
-            save_messages=True,
             enrich_messages=True,
             recognize_photo=False
         )
@@ -293,7 +301,6 @@ class TestChatConfigIntegration:
         
         chat_config = ChatConfig(
             chat_id=sample_chat_data["id"],
-            save_messages=True,
             enrich_messages=False,  # Disabled
             recognize_photo=False
         )
