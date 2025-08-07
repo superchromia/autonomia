@@ -7,8 +7,8 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
-from starlette.middleware.sessions import SessionMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.middleware.sessions import SessionMiddleware
 from starlette.requests import Request
 from starlette.responses import Response
 
@@ -75,28 +75,24 @@ scheduler = AsyncIOScheduler()
 
 class HTTPSRedirectMiddleware(BaseHTTPMiddleware):
     """Middleware to handle HTTPS redirects and forwarded headers."""
-    
+
     async def dispatch(self, request: Request, call_next):
         # Check if we're behind a proxy and get the real scheme
         forwarded_proto = request.headers.get("x-forwarded-proto")
         forwarded_host = request.headers.get("x-forwarded-host")
-        
+
         # If we're behind a proxy and it's HTTP, redirect to HTTPS
         if forwarded_proto == "http" and forwarded_host:
             # Construct HTTPS URL
             https_url = f"https://{forwarded_host}{request.url.path}"
             if request.url.query:
                 https_url += f"?{request.url.query}"
-            return Response(
-                status_code=301,
-                headers={"Location": https_url},
-                content="Redirecting to HTTPS"
-            )
-        
+            return Response(status_code=301, headers={"Location": https_url}, content="Redirecting to HTTPS")
+
         # Set the scheme to HTTPS if we're behind a proxy
         if forwarded_proto == "https":
             request.scope["scheme"] = "https"
-        
+
         response = await call_next(request)
         return response
 

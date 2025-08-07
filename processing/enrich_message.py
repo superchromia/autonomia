@@ -1,10 +1,10 @@
 import json
 import logging
 import os
-from typing import List, Literal
 
 from openai import AsyncOpenAI
 from pydantic import BaseModel
+from sqlalchemy.future import select
 
 from models.message import Message
 from models.messages_enriched import EnrichedMessage
@@ -130,13 +130,35 @@ async def process_message(session, chat_id: int, message_id: int) -> Message:
     logger.info(f"Collected embeddings for message {message_id} in chat {chat_id}")
     embeddings = embeddings_data.data[0].embedding
 
-    # Save enriched message
-    db_enriched_message = EnrichedMessage(
-        chat_id=chat_id,
-        message_id=message_id,
-        context=data["context"],
-        meaning=data["meaning"],
-        embeddings=embeddings,
+    # Check if enriched message already exists
+    result = await session.execute(
+        select(EnrichedMessage).where(
+            EnrichedMessage.chat_id == chat_id,
+            EnrichedMessage.message_id == message_id
+        )
     )
-    session.add(db_enriched_message)
+    existing_enriched_message = result.scalar_one_or_none()
+    
+    if existing_enriched_message:
+        # Update existing enriched message
+        existing_enriched_message.context = data["context"]
+        existing_enriched_message.meaning = data["meaning"]
+        existing_enriched_message.embeddings = embeddings
+        logger.info(
+            f"Updated existing enriched message: {chat_id}:{message_id}"
+        )
+    else:
+        # Create new enriched message
+        db_enriched_message = EnrichedMessage(
+            chat_id=chat_id,
+            message_id=message_id,
+            context=data["context"],
+            meaning=data["meaning"],
+            embeddings=embeddings,
+        )
+        session.add(db_enriched_message)
+        logger.info(
+            f"Created new enriched message: {chat_id}:{message_id}"
+        )
+    
     await session.commit()

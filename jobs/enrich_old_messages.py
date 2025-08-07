@@ -24,11 +24,28 @@ async def get_unenriched_messages(
 
         unenriched = []
         for chat_id in active_configs:
-            # Get unenriched messages for this chat
-            result = await session.execute(select(Message.message_id).where(Message.chat_id == chat_id).limit(limit))
+            # Get unenriched messages for this chat (exclude already enriched)
+            result = await session.execute(
+                select(Message.message_id)
+                .where(Message.chat_id == chat_id)
+                .limit(limit)
+            )
             msg_ids = result.scalars().all()
+            
+            # Filter out messages that are already enriched
+            from models.messages_enriched import EnrichedMessage
             for msg_id in msg_ids:
-                unenriched.append((chat_id, msg_id))
+                # Check if this message is already enriched
+                enriched_result = await session.execute(
+                    select(EnrichedMessage)
+                    .where(
+                        EnrichedMessage.chat_id == chat_id,
+                        EnrichedMessage.message_id == msg_id
+                    )
+                )
+                if not enriched_result.scalar_one_or_none():
+                    unenriched.append((chat_id, msg_id))
+        
         return unenriched
 
 

@@ -137,23 +137,6 @@ class ChatConfigAdmin(ModelView, model=ChatConfig):
     can_edit = True
     can_delete = True
 
-    def delete_model(self, request: Request, pk) -> bool:
-        """Custom delete method to handle foreign key constraints."""
-        try:
-            # Get the model instance
-            model = self.model
-            obj = request.state.db.query(model).get(pk)
-            
-            if obj:
-                # Delete the object
-                request.state.db.delete(obj)
-                request.state.db.commit()
-                return True
-            return False
-        except Exception:
-            request.state.db.rollback()
-            return False
-
     def get_url_for(self, name: str, **kwargs) -> str:
         """Override to ensure HTTPS URLs are used."""
         url = super().get_url_for(name, **kwargs)
