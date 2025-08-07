@@ -34,19 +34,13 @@ def test_chat_config_model():
         # Test that we can create a ChatConfig instance
         config = ChatConfig(
             chat_id=123456789,
-            save_messages=True,
             enrich_messages=True,
-            recognize_photo=False,
-            system_prompt="Test prompt",
-            answer_threshold=0.8
+            recognize_photo=False
         )
         
         assert config.chat_id == 123456789
-        assert config.save_messages is True
         assert config.enrich_messages is True
         assert config.recognize_photo is False
-        assert config.system_prompt == "Test prompt"
-        assert config.answer_threshold == 0.8
         
         # Test string representation
         repr_str = repr(config)

@@ -111,12 +111,8 @@ class ChatConfigAdmin(ModelView, model=ChatConfig):
 
     column_list: ClassVar = [
         ChatConfig.chat_id,
-        ChatConfig.save_messages,
         ChatConfig.enrich_messages,
         ChatConfig.recognize_photo,
-        ChatConfig.load_from_date,
-        ChatConfig.system_prompt,
-        ChatConfig.answer_threshold,
     ]
 
     column_searchable_list: ClassVar = [
