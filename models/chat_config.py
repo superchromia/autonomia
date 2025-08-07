@@ -6,7 +6,7 @@ from models.base import Base
 
 class ChatConfig(Base):
     __tablename__ = "chat_configs"
-    chat_id = Column(BigInteger, ForeignKey("chats.id"), primary_key=True)
+    chat_id = Column(BigInteger, ForeignKey("chats.id", ondelete="CASCADE"), primary_key=True)
     save_messages = Column(Boolean, nullable=False, default=True)
     enrich_messages = Column(Boolean, nullable=False, default=True)
     recognize_photo = Column(Boolean, nullable=False, default=True)
