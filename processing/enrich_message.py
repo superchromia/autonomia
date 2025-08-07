@@ -1,23 +1,19 @@
 import json
 import logging
 import os
+from typing import List, Literal
 
 from openai import AsyncOpenAI
+from pydantic import BaseModel
 
-from dependency import dependency
-from models.chat import Chat
-from models.messages_enriched import EnrichedMessage
 from models.message import Message
+from models.messages_enriched import EnrichedMessage
 from models.user import User
 
 ai_client = AsyncOpenAI(
     base_url="https://api.studio.nebius.com/v1/",
     api_key=os.environ.get("NEBIUS_STUDIO_API_KEY"),
 )
-
-from typing import List, Literal
-
-from pydantic import BaseModel
 
 logger = logging.getLogger("enrich_messages")
 
@@ -27,7 +23,7 @@ class UserDescription(BaseModel):
     description: str
 
 
-class EnrichedMessage(BaseModel):
+class EnrichedMessageData(BaseModel):
     context: str
     meaning: str
     # new_user_description: List[UserDescription]
@@ -54,27 +50,19 @@ def format_message(raw_data, username):
 
 async def collect_message_context(session, chat_id: int, message_id: int) -> str:
     from sqlalchemy.future import select
-    
+
     # Get current message
-    result = await session.execute(
-        select(Message).where(
-            Message.chat_id == chat_id,
-            Message.message_id == message_id
-        )
-    )
+    result = await session.execute(select(Message).where(Message.chat_id == chat_id, Message.message_id == message_id))
     message = result.scalar_one_or_none()
     if not message:
         return "Message not found"
-    
+
     # Get previous messages
     result = await session.execute(
-        select(Message).where(
-            Message.chat_id == chat_id,
-            Message.message_id < message_id
-        ).order_by(Message.message_id.desc()).limit(50)
+        select(Message).where(Message.chat_id == chat_id, Message.message_id < message_id).order_by(Message.message_id.desc()).limit(50)
     )
     previous_messages = result.scalars().all()
-    
+
     # Get usernames
     result = await session.execute(select(User))
     users = result.scalars().all()
@@ -82,11 +70,8 @@ async def collect_message_context(session, chat_id: int, message_id: int) -> str
     for user in users:
         username = user.username or f"{user.first_name} {user.last_name}".strip()
         usernames[user.id] = username
-    
-    previous_messages_formatted = "\n".join(
-        format_message(msg.raw_data, usernames.get(msg.sender_id, "Unknown")) 
-        for msg in previous_messages
-    )
+
+    previous_messages_formatted = "\n".join(format_message(msg.raw_data, usernames.get(msg.sender_id, "Unknown")) for msg in previous_messages)
 
     return f"""
     ПРЕДЫДУЩИЕ СООБЩЕНИЯ:
@@ -124,7 +109,7 @@ async def process_message(session, chat_id: int, message_id: int) -> Message:
             },
             {"role": "user", "content": [{"type": "text", "text": context}]},
         ],
-        extra_body={"guided_json": EnrichedMessage.model_json_schema()},
+        extra_body={"guided_json": EnrichedMessageData.model_json_schema()},
     )
     response = response.choices[0].message.content
     logger.info(f"Collected response for message {message_id} in chat {chat_id}")
