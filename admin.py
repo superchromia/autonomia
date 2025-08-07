@@ -154,6 +154,13 @@ class ChatConfigAdmin(ModelView, model=ChatConfig):
             request.state.db.rollback()
             return False
 
+    def get_url_for(self, name: str, **kwargs) -> str:
+        """Override to ensure HTTPS URLs are used."""
+        url = super().get_url_for(name, **kwargs)
+        if config.force_https and url.startswith("http://"):
+            url = url.replace("http://", "https://", 1)
+        return url
+
 
 class MediaAdmin(ModelView, model=Media):
     """Admin panel for Media model"""
@@ -308,12 +315,13 @@ def setup_admin(app, engine):
     # Create authentication backend
     auth_backend = AdminAuth(secret_key=config.secret_key)
 
-    # Create admin with authentication
+    # Create admin with authentication and HTTPS support
     admin = Admin(
         app,
         engine,
         title="Superchromia Admin",
         authentication_backend=auth_backend,
+        base_url="/admin" if config.force_https else None,
     )
 
     # Add views

@@ -42,6 +42,13 @@ class Config(BaseSettings):
         env="SECRET_KEY",
         description="Secret key for session encryption",
     )
+    
+    # HTTPS Configuration
+    force_https: bool = Field(
+        default=True,
+        env="FORCE_HTTPS",
+        description="Force HTTPS for admin panel and API",
+    )
 
     # Validation
     @field_validator("admin_username")
