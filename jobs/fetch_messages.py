@@ -57,18 +57,31 @@ async def fetch_all_messages_job():
             messages_gen = messages_generator(client, chat_id, offset_id)
 
             async for batch in take_batch(messages_gen):
-                # Save messages batch
+                # Save messages batch with upsert logic
                 for msg in batch:
-                    db_message = Message(
-                        message_id=msg.id,
-                        chat_id=chat_id,
-                        sender_id=msg.sender_id if msg.sender_id else None,
-                        date=msg.date,
-                        message_type=(msg.media.__class__.__name__ if msg.media else "text"),
-                        is_read=False,
-                        is_deleted=False,
-                        raw_data=safe_telegram_to_dict(msg),
-                    )
-                    session.add(db_message)
+                    # Check if message already exists
+                    result = await session.execute(select(Message).where(Message.message_id == msg.id, Message.chat_id == chat_id))
+                    existing_message = result.scalar_one_or_none()
+
+                    if existing_message:
+                        # Update existing message
+                        existing_message.sender_id = msg.sender_id if msg.sender_id else None
+                        existing_message.date = msg.date
+                        existing_message.message_type = msg.media.__class__.__name__ if msg.media else "text"
+                        existing_message.raw_data = safe_telegram_to_dict(msg)
+                    else:
+                        # Create new message
+                        db_message = Message(
+                            message_id=msg.id,
+                            chat_id=chat_id,
+                            sender_id=msg.sender_id if msg.sender_id else None,
+                            date=msg.date,
+                            message_type=(msg.media.__class__.__name__ if msg.media else "text"),
+                            is_read=False,
+                            is_deleted=False,
+                            raw_data=safe_telegram_to_dict(msg),
+                        )
+                        session.add(db_message)
+
                 await session.commit()
                 logger.info(f"Saved messages batch: {len(batch)}")

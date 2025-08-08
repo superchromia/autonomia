@@ -27,18 +27,29 @@ async def new_message_handler(event: events.NewMessage.Event):
             chat = await message.get_chat()
             user = await message.get_sender()
 
-            # Save message
-            db_message = DBMessage(
-                message_id=message.id,
-                chat_id=chat.id,
-                sender_id=user.id if user else None,
-                date=message.date,
-                message_type=message.media.__class__.__name__ if message.media else "text",
-                is_read=False,
-                is_deleted=False,
-                raw_data=safe_telegram_to_dict(message),
-            )
-            session.add(db_message)
+            # Check if message already exists
+            result = await session.execute(select(DBMessage).where(DBMessage.message_id == message.id, DBMessage.chat_id == chat.id))
+            existing_message = result.scalar_one_or_none()
+
+            if existing_message:
+                # Update existing message
+                existing_message.sender_id = user.id if user else None
+                existing_message.date = message.date
+                existing_message.message_type = message.media.__class__.__name__ if message.media else "text"
+                existing_message.raw_data = safe_telegram_to_dict(message)
+            else:
+                # Save new message
+                db_message = DBMessage(
+                    message_id=message.id,
+                    chat_id=chat.id,
+                    sender_id=user.id if user else None,
+                    date=message.date,
+                    message_type=message.media.__class__.__name__ if message.media else "text",
+                    is_read=False,
+                    is_deleted=False,
+                    raw_data=safe_telegram_to_dict(message),
+                )
+                session.add(db_message)
 
             # Check if chat already exists
             result = await session.execute(select(Chat).where(Chat.id == chat.id))
