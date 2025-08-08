@@ -2,6 +2,7 @@ from typing import ClassVar
 
 from sqladmin import Admin, ModelView
 from sqladmin.authentication import AuthenticationBackend
+from sqladmin.filters import ForeignKeyFilter
 from starlette.requests import Request
 
 from config import config
@@ -11,6 +12,8 @@ from models.media import Media
 from models.message import Message
 from models.messages_enriched import EnrichedMessage
 from models.user import User
+
+
 
 
 class ChatAdmin(ModelView, model=Chat):
@@ -221,6 +224,10 @@ class MessageAdmin(ModelView, model=Message):
         Message.updated_at,
     ]
 
+    column_filters: ClassVar = [
+        ForeignKeyFilter(Message.chat_id, Chat.title, title="Chat"),
+    ]
+
     column_default_sort = ("date", True)
 
     can_create = False
@@ -255,6 +262,10 @@ class EnrichedMessageAdmin(ModelView, model=EnrichedMessage):
     column_sortable_list: ClassVar = [
         EnrichedMessage.chat_id,
         EnrichedMessage.message_id,
+    ]
+
+    column_filters: ClassVar = [
+        ForeignKeyFilter(EnrichedMessage.chat_id, Chat.title, title="Chat"),
     ]
 
     column_default_sort = ("chat_id", True)
