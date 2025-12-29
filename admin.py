@@ -14,8 +14,6 @@ from models.messages_enriched import EnrichedMessage
 from models.user import User
 
 
-
-
 class ChatAdmin(ModelView, model=Chat):
     """Admin panel for Chat model"""
 
@@ -128,8 +126,6 @@ class ChatConfigAdmin(ModelView, model=ChatConfig):
         ChatConfig.recognize_photo,
     ]
 
-    form_include_pk = True
-
     column_default_sort = ("chat_id", True)
 
     can_create = True
@@ -138,6 +134,7 @@ class ChatConfigAdmin(ModelView, model=ChatConfig):
 
     def get_url_for(self, name: str, **kwargs) -> str:
         """Override to ensure HTTPS URLs are used."""
+        # pylint: disable=no-member
         url = super().get_url_for(name, **kwargs)
         if config.force_https and url.startswith("http://"):
             url = url.replace("http://", "https://", 1)

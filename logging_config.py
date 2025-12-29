@@ -1,5 +1,8 @@
 import logging
 import logging.config
+import os
+
+logging_level = "DEBUG" if os.getenv("DEBUG", "").lower() in ("true", "1", "yes") else "INFO"
 
 
 def setup_logging():
@@ -17,7 +20,7 @@ def setup_logging():
         "handlers": {
             "console": {
                 "class": "logging.StreamHandler",
-                "level": "INFO",
+                "level": logging_level,
                 "formatter": "default",
                 "stream": "ext://sys.stdout",
             },
@@ -28,7 +31,7 @@ def setup_logging():
                 "handlers": ["console"],
             },
             "app": {
-                "level": "INFO",
+                "level": logging_level,
                 "handlers": ["console"],
                 "propagate": False,
             },
@@ -58,7 +61,7 @@ def setup_logging():
                 "propagate": False,
             },
             "telethon_hook": {
-                "level": "INFO",
+                "level": logging_level,
                 "handlers": ["console"],
                 "propagate": False,
             },

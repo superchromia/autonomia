@@ -11,26 +11,5 @@ services:
     volumes:
       - ..:/app
     command: sleep infinity
-    network_mode: host
-    depends_on:
-      - postgres
-
-  postgres:
-    image: pgvector/pgvector:pg17
-    restart: unless-stopped
-    env_file:
-      - ../.env
-    environment:
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=postgres
-      - POSTGRES_DB=postgres
-    expose:
-      - "5432"
-    ports:
-      - "5432:5432"
-    volumes:
-      - pgdata:/var/lib/postgresql/data
-    network_mode: host
-
-volumes:
-  pgdata:
+    extra_hosts:
+      - "host.docker.internal:host-gateway"

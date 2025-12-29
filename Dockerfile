@@ -1,7 +1,7 @@
 FROM python:3.11-slim
 
 # Install Poetry via pip (more stable)
-RUN pip install poetry \
+RUN pip install --no-cache-dir poetry \
     && poetry config virtualenvs.create false
 
 # Create working user
@@ -9,11 +9,14 @@ RUN useradd --create-home --shell /bin/bash app
 
 WORKDIR /app
 
+# Copy dependency files first for better caching
+COPY pyproject.toml poetry.lock* ./
+
+# Install dependencies (production only)
+RUN poetry install --only=main --no-interaction --no-ansi
+
 # Copy application code
 COPY . .
-
-# Install dependencies
-RUN poetry install --only=main --no-interaction --no-ansi
 
 # Change file ownership
 RUN chown -R app:app /app

@@ -4,8 +4,9 @@ import os
 
 from openai import AsyncOpenAI
 from pydantic import BaseModel
-from sqlalchemy.future import select
 
+from models.chat_config import ChatConfig
+from models.media import Media
 from models.message import Message
 from models.messages_enriched import EnrichedMessage
 from models.user import User
@@ -16,6 +17,37 @@ ai_client = AsyncOpenAI(
 )
 
 logger = logging.getLogger("enrich_messages")
+
+# Default system prompts
+DEFAULT_ENRICHMENT_SYSTEM_PROMPT = """
+Ты — роботесса в гонкочате с ником @autochromia. Общение идёт на русском языке. 
+Твоя задача — определить контекст общения до сообщения и смысл сообщения.
+
+Тебе на вход поступают сообщения из чата в формате: 
+message {msg_id}: @{username} ответил на id={reply_to}: {msg_text} 
+msg_id нужны для того чтобы ты мог ссылаться на сообщения в чате и связывать цепочки ответов.  
+
+Если сообщение является ответом на другое сообщение, то ты должна в контексте учесть эту нитку диалога.
+
+Ты получаешь на вход сообщения в формате:
+'Сообщение {номер}: от {пользователь} на id={номер на который ответ}: "{текст сообщения}"'
+
+Ты должна собрать контекст общения до сообщения и смысл текста сообщения.
+Используй номера сообщений только для понимания порядка сообщений. Пользователям они недоступны.
+"""
+
+DEFAULT_RESPONSE_SYSTEM_PROMPT = """
+Ты — роботесса в гонкочате с ником @autochromia. Общение идёт на русском языке.
+Твоя задача — отвечать на сообщения в чате естественно и по делу.
+
+Правила:
+- Отвечай только если это уместно и по теме разговора
+- Будь дружелюбной и общительной
+- Используй эмодзи умеренно
+- Если сообщение не требует ответа, верни пустую строку
+- Отвечай кратко и по делу
+- Учитывай контекст предыдущих сообщений
+"""
 
 
 class UserDescription(BaseModel):
@@ -83,29 +115,35 @@ async def collect_message_context(session, chat_id: int, message_id: int) -> str
 
 
 async def process_message(session, chat_id: int, message_id: int) -> Message:
+    # Get chat config for model settings
+    from sqlalchemy.future import select
+
+    result = await session.execute(select(ChatConfig).where(ChatConfig.chat_id == chat_id))
+    chat_config = result.scalar_one_or_none()
+
+    if not chat_config:
+        raise ValueError(f"ChatConfig not found for chat_id={chat_id}")
+
+    if not chat_config.text_model:
+        raise ValueError(f"text_model not configured for chat_id={chat_id}")
+    if not chat_config.embeddings_model:
+        raise ValueError(f"embeddings_model not configured for chat_id={chat_id}")
+    if not chat_config.system_prompt:
+        raise ValueError(f"system_prompt not configured for chat_id={chat_id}")
+
+    text_model = chat_config.text_model
+    embeddings_model = chat_config.embeddings_model
+    system_prompt = chat_config.system_prompt
+
     context = await collect_message_context(session, chat_id=chat_id, message_id=message_id)
+
     logger.info(f"Collected context for message {message_id} in chat {chat_id}")
     response = await ai_client.chat.completions.create(
-        model="deepseek-ai/DeepSeek-V3",
+        model=text_model,
         messages=[
             {
                 "role": "system",
-                "content": """
-                Ты — роботесса в гонкочате с ником @autochromia. Общение идёт на русском языке. 
-                Твоя задача — определить контекст общения до сообщения и смысл сообщения.
-
-                Тебе на вход поступают сообщения из чата в формате: 
-                message {msg_id}: @{username} ответил на id={reply_to}: {msg_text} 
-                msg_id нужны для того чтобы ты мог ссылаться на сообщения в чате и связывать цепочки ответов.  
-
-                Если сообщение является ответом на другое сообщение, то ты должна в контексте учесть эту нитку диалога.
-
-                Ты получаешь на вход сообщения в формате:
-                'Сообщение {номер}: от {пользователь} на id={номер на который ответ}: "{текст сообщения}"'
-
-                Ты должна собрать контекст общения до сообщения и смысл текста сообщения.
-                Используй номера сообщений только для понимания порядка сообщений. Пользователей они недоступны
-                """,
+                "content": system_prompt,
             },
             {"role": "user", "content": [{"type": "text", "text": context}]},
         ],
@@ -116,7 +154,7 @@ async def process_message(session, chat_id: int, message_id: int) -> Message:
     data = json.loads(response)
 
     embeddings_data = await ai_client.embeddings.create(
-        model="Qwen/Qwen3-Embedding-8B",
+        model=embeddings_model,
         input="""
         КОНТЕКСТ 
         {context}
@@ -153,3 +191,81 @@ async def process_message(session, chat_id: int, message_id: int) -> Message:
         logger.info(f"Created new enriched message: {chat_id}:{message_id}")
 
     await session.commit()
+
+
+async def generate_bot_response(session, chat_id: int, message_id: int) -> str | None:
+    """
+    Generate a bot response to a message in a chat.
+    Returns the response text or None if the bot should not respond.
+    """
+    # Get chat config for model settings
+    from sqlalchemy.future import select
+
+    result = await session.execute(select(ChatConfig).where(ChatConfig.chat_id == chat_id))
+    chat_config = result.scalar_one_or_none()
+
+    if not chat_config:
+        raise ValueError(f"ChatConfig not found for chat_id={chat_id}")
+
+    if not chat_config.text_model:
+        raise ValueError(f"text_model not configured for chat_id={chat_id}")
+    if not chat_config.system_prompt:
+        raise ValueError(f"system_prompt not configured for chat_id={chat_id}")
+
+    text_model = chat_config.text_model
+    system_prompt = chat_config.system_prompt
+
+    context = await collect_message_context(session, chat_id=chat_id, message_id=message_id)
+
+    # Get photo description if available
+    photo_description = None
+    result = await session.execute(select(Media).where(Media.chat_id == chat_id, Media.message_id == message_id, Media.media_type == "photo"))
+    media = result.scalar_one_or_none()
+    if media and media.text_description:
+        photo_description = media.text_description
+
+    # Add photo description to context if available
+    if photo_description:
+        context_with_photo = f"{context}\n\nОПИСАНИЕ ФОТОГРАФИИ В СООБЩЕНИИ:\n{photo_description}"
+    else:
+        context_with_photo = context
+
+    logger.info(f"Generating bot response for message {message_id} in chat {chat_id}")
+
+    try:
+        messages = [
+            {
+                "role": "system",
+                "content": system_prompt,
+            },
+            {
+                "role": "user",
+                "content": [
+                    {
+                        "type": "text",
+                        "text": context_with_photo,
+                    }
+                ],
+            },
+        ]
+        print(context_with_photo)
+        response = await ai_client.chat.completions.create(
+            model=text_model,
+            messages=messages,
+            max_tokens=450,
+            temperature=0.85,
+            presence_penalty=0.2,
+            frequency_penalty=0.2,
+        )
+        response_text = response.choices[0].message.content.strip()
+
+        # Return None if response is empty or just whitespace
+        if not response_text:
+            logger.debug(f"Bot decided not to respond to message {message_id} in chat {chat_id}")
+            return None
+
+        logger.info(f"Generated bot response for message {message_id} in chat {chat_id}: {response_text[:50]}...")
+        return response_text
+    except Exception as e:
+        logger.exception(f"Failed to generate bot response: {e}")
+        return None
