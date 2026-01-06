@@ -19,6 +19,8 @@ logger = logging.getLogger("telethon_hook")
 
 tg = dependency.telegram_client
 
+# TODO: Get message's max length from telegram, not magic numbers
+max_message_length = 1265
 
 async def create_chat(session: AsyncSession, chat: Chat) -> None:
     result = await session.execute(select(DBChat).where(DBChat.id == chat.id))
@@ -112,7 +114,6 @@ async def create_message(session: AsyncSession, message: Message, chat: Chat, us
         )
         session.add(db_message)
 
-
 async def check_should_respond(session: AsyncSession, message: Message, chat: Chat) -> bool:
     result = await session.execute(select(ChatConfig).where(ChatConfig.chat_id == chat.id))
     chat_config = result.scalar_one_or_none()
@@ -132,7 +133,13 @@ async def respond_to_message(session: AsyncSession, message: Message, chat: Chat
         bot_response = await generate_bot_response(session, chat_id=chat.id, message_id=message.id)
         if bot_response:
             try:
-                await tg.send_message(chat, bot_response, reply_to=message.id)
+                length: int = len(bot_response)
+                message_part: int = 0
+
+                while length > message_part * max_message_length:
+                    await tg.send_message(chat, bot_response[:max_message_length * message_part], reply_to=message.id)
+                    message_part += 1
+                
                 logger.info(f"Sent bot response to message {message.id} " f"in chat {chat.id}")
             except Exception as e:
                 logger.exception(f"Failed to send bot response: {e}")

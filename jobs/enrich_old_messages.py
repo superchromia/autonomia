@@ -67,9 +67,8 @@ async def enrich_old_messages_job(limit: int = 100):
 
 async def main():
     """Main function to run the enrichment job"""
-    await enrich_old_messages_job(limit=100)
+    await enrich_old_messages_job()
     logger.info("Enrichment job completed")
-
 
 if __name__ == "__main__":
     asyncio.run(main())
