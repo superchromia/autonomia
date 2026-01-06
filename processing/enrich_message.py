@@ -169,7 +169,8 @@ async def process_message(session, chat_id: int, message_id: int) -> Message:
     embeddings = embeddings_data.data[0].embedding
 
     # Check if enriched message already exists
-    result = await session.execute(select(EnrichedMessage).where(EnrichedMessage.chat_id == chat_id, EnrichedMessage.message_id == message_id))
+    result = await session.execute(select(EnrichedMessage).where(EnrichedMessage.chat_id == chat_id, 
+                                                                 EnrichedMessage.message_id == message_id))
     existing_enriched_message = result.scalar_one_or_none()
 
     if existing_enriched_message:
@@ -219,7 +220,8 @@ async def generate_bot_response(session, chat_id: int, message_id: int) -> str |
 
     # Get photo description if available
     photo_description = None
-    result = await session.execute(select(Media).where(Media.chat_id == chat_id, Media.message_id == message_id, Media.media_type == "photo"))
+    result = await session.execute(select(Media).where(Media.chat_id == chat_id, 
+                                                       Media.message_id == message_id, Media.media_type == "photo"))
     media = result.scalar_one_or_none()
     if media and media.text_description:
         photo_description = media.text_description
