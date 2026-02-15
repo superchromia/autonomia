@@ -37,7 +37,24 @@ Telegram bot for LLM-based processing, analyzing and answering messages using Fa
    TELEGRAM_API_ID=your_api_id
    TELEGRAM_API_HASH=your_api_hash
    TELETHON_SESSION=autonomia
-   NEBIUS_STUDIO_API_KEY=your_nebius_key
+   NEBIUS_API_KEY=your_nebius_key
+   # Optional override:
+   # NEBIUS_BASE_URL=https://api.tokenfactory.nebius.com/v1/
+   # Backward compatibility:
+   # NEBIUS_STUDIO_API_KEY=your_nebius_key
+   ```
+
+   Optional MCP settings:
+   ```env
+   MCP_ENABLED=true
+   MCP_SERVERS_FILE=mcp_servers.json
+   # Optional inline override (JSON string)
+   # MCP_SERVERS_JSON={"servers":[...]}
+   ```
+
+   Then copy and edit the example config:
+   ```bash
+   cp mcp_servers.example.json mcp_servers.json
    ```
 
 3. **Run the Application**
@@ -62,7 +79,9 @@ Telegram bot for LLM-based processing, analyzing and answering messages using Fa
    TELEGRAM_API_HASH=your_api_hash
    TELETHON_SESSION=autonomia
    TELETHON_SESSION_STRING=your_string_session
-   NEBIUS_STUDIO_API_KEY=your_nebius_key
+   NEBIUS_API_KEY=your_nebius_key
+   # Optional override:
+   # NEBIUS_BASE_URL=https://api.tokenfactory.nebius.com/v1/
    ```
 
 3. **Service Settings**
@@ -90,6 +109,7 @@ For cloud deployment, you need to use StringSession instead of session files:
 ## API Endpoints
 
 - `GET /api/v1/health` - Service health check
+- `GET /api/v1/mcp/servers` - Loaded MCP servers (safe view without secrets)
 - Additional endpoints for message processing and analysis
 
 ## Project Structure

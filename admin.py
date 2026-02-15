@@ -9,6 +9,7 @@ from config import config
 from models.chat import Chat
 from models.chat_config import ChatConfig
 from models.media import Media
+from models.memory import Memory
 from models.message import Message
 from models.messages_enriched import EnrichedMessage
 from models.user import User
@@ -279,6 +280,54 @@ class EnrichedMessageAdmin(ModelView, model=EnrichedMessage):
         return "Yes" if obj.embeddings is not None else "No"
 
 
+class MemoryAdmin(ModelView, model=Memory):
+    """Admin panel for chat memories."""
+
+    name = "Memory"
+    name_plural = "Memories"
+    icon = "fa-solid fa-brain"
+
+    column_list: ClassVar = [
+        Memory.id,
+        Memory.chat_id,
+        Memory.source_message_id,
+        Memory.memory_type,
+        Memory.importance,
+        Memory.is_active,
+        Memory.memory_text,
+        Memory.created_at,
+        Memory.updated_at,
+    ]
+
+    column_searchable_list: ClassVar = [
+        Memory.chat_id,
+        Memory.memory_type,
+        Memory.memory_text,
+    ]
+
+    column_sortable_list: ClassVar = [
+        Memory.id,
+        Memory.chat_id,
+        Memory.memory_type,
+        Memory.importance,
+        Memory.is_active,
+        Memory.created_at,
+        Memory.updated_at,
+    ]
+
+    column_filters: ClassVar = [
+        ForeignKeyFilter(Memory.chat_id, Chat.title, title="Chat"),
+    ]
+
+    column_default_sort = ("updated_at", True)
+
+    can_create = True
+    can_edit = True
+    can_delete = True
+
+    form_excluded_columns: ClassVar = ["created_at", "updated_at"]
+
+
 class AdminAuth(AuthenticationBackend):
     async def login(self, request: Request) -> bool:
         form = await request.form()
@@ -318,5 +367,6 @@ def setup_admin(app, engine):
     admin.add_view(MediaAdmin)
     admin.add_view(MessageAdmin)
     admin.add_view(EnrichedMessageAdmin)
+    admin.add_view(MemoryAdmin)
 
     return admin

@@ -7,6 +7,7 @@ from alembic import context
 
 # add your model's MetaData object here
 # for 'autogenerate' support
+from database_url import normalize_database_url_for_container
 from models.base import Base
 
 # this is the Alembic Config object, which provides
@@ -23,10 +24,11 @@ target_metadata = Base.metadata
 
 # Get database URL from environment variables
 def get_database_url():
-    return os.environ.get(
+    url = os.environ.get(
         "DATABASE_URL",
         "postgresql+asyncpg://postgres:postgres@localhost:5432/telegram",
     )
+    return normalize_database_url_for_container(url)
 
 
 def create_database_if_not_exists():

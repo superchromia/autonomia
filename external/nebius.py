@@ -19,8 +19,15 @@ class NebiusAIStudioClient:
         self, model_id: str, api_key: str = None, base_url: str = None
     ):
         self.model_id = model_id
-        self.api_key = api_key or os.environ.get("NEBIUS_STUDIO_API_KEY")
-        self.base_url = base_url or "https://api.studio.nebius.com/v1/"
+        self.api_key = (
+            api_key
+            or os.environ.get("NEBIUS_API_KEY")
+            or os.environ.get("NEBIUS_STUDIO_API_KEY")
+        )
+        self.base_url = base_url or os.environ.get(
+            "NEBIUS_BASE_URL",
+            "https://api.tokenfactory.nebius.com/v1/",
+        )
 
     async def chat_completion(
         self,

@@ -159,7 +159,7 @@ async def new_message_handler(event: events.NewMessage.Event):
 
 
 @tg.on(events.NewMessage(outgoing=True))
-async def new_message_handler(event: events.NewMessage.Event):
+async def new_outgoing_message_handler(event: events.NewMessage.Event):
     logger.info(f"Received NewMessage (outgoing={event.out}): {event}")
     message: Message = event.message
     chat = await message.get_chat()
@@ -170,6 +170,7 @@ async def new_message_handler(event: events.NewMessage.Event):
             if user:
                 await create_user(session, user)
             await create_message(session, message, chat, user)
+            await session.commit()
         except Exception as e:
             logger.exception(f"Failed to save message: {e}")
 

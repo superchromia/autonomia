@@ -104,6 +104,7 @@ celerybeat.pid
 # Environments
 .ssh
 .env
+mcp_servers.json
 .venv
 env/
 venv/

@@ -33,6 +33,13 @@ logger = logging.getLogger("app")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    mcp_servers = config.get_mcp_servers()
+    logger.info(
+        "MCP configuration loaded: enabled=%s, servers=%s",
+        config.mcp_enabled,
+        [server.name for server in mcp_servers],
+    )
+
     logger.info("Applying Alembic migrations...")
     from alembic import command
     from alembic.config import Config

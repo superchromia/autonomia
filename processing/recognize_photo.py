@@ -16,8 +16,12 @@ from models.media import Media
 logger = logging.getLogger("recognize_photo")
 
 ai_client = AsyncOpenAI(
-    base_url="https://api.studio.nebius.com/v1/",
-    api_key=os.environ.get("NEBIUS_STUDIO_API_KEY"),
+    base_url=os.environ.get(
+        "NEBIUS_BASE_URL",
+        "https://api.tokenfactory.nebius.com/v1/",
+    ),
+    api_key=os.environ.get("NEBIUS_API_KEY")
+    or os.environ.get("NEBIUS_STUDIO_API_KEY"),
 )
 
 

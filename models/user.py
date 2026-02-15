@@ -27,9 +27,7 @@ class User(Base):
     raw_data = Column(JSONB, nullable=False)  # Full user data
 
     # System fields
-    created_at = Column(
-        DateTime(timezone=True), server_default=func.now(), nullable=False
-    )
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at = Column(
         DateTime(timezone=True),
         server_default=func.now(),
@@ -64,3 +62,14 @@ class User(Base):
             return f"{self.last_name}"
         else:
             return f"User {self.id}"
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "username": self.username,
+            "first_name": self.first_name,
+            "last_name": self.last_name,
+            "is_bot": self.is_bot,
+            "is_verified": self.is_verified,
+            "is_premium": self.is_premium,
+        }

@@ -44,7 +44,8 @@
     }
   },
   "remoteEnv": {
-    "PYTHONPATH": "/app"
+    "PYTHONPATH": "/app",
+    "DATABASE_URL": "postgresql+asyncpg://autonomia:autonomia@postgres:5432/autonomia_db"
   },
   "features": {
     "ghcr.io/devcontainers/features/git:1": {},

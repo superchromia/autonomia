@@ -1,6 +1,9 @@
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings
 
+from database_url import normalize_database_url_for_container
+from mcp import MCPServerConfig, load_mcp_servers
+
 
 class Config(BaseSettings):
     """Application configuration using Pydantic for validation"""
@@ -42,12 +45,29 @@ class Config(BaseSettings):
         env="SECRET_KEY",
         description="Secret key for session encryption",
     )
-    
+
     # HTTPS Configuration
     force_https: bool = Field(
         default=True,
         env="FORCE_HTTPS",
         description="Force HTTPS for admin panel and API",
+    )
+
+    # MCP configuration
+    mcp_enabled: bool = Field(
+        default=False,
+        env="MCP_ENABLED",
+        description="Enable integration with external MCP servers",
+    )
+    mcp_servers_file: str = Field(
+        default="mcp_servers.json",
+        env="MCP_SERVERS_FILE",
+        description="Path to MCP servers JSON config file",
+    )
+    mcp_servers_json: str | None = Field(
+        default=None,
+        env="MCP_SERVERS_JSON",
+        description="Inline JSON with MCP servers (overrides file entries by name)",
     )
 
     # Validation
@@ -95,6 +115,11 @@ class Config(BaseSettings):
             raise ValueError("SECRET_KEY must be at least 32 characters long")
         return v
 
+    @field_validator("database_url")
+    @classmethod
+    def normalize_database_url(cls, v):
+        return normalize_database_url_for_container(v)
+
     def validate_required_telegram_config(self) -> None:
         """Validate that required Telegram configuration is present"""
         if not self.telegram_api_id:
@@ -105,6 +130,13 @@ class Config(BaseSettings):
             raise ValueError(
                 "TELEGRAM_API_HASH environment variable is required"
             )
+
+    def get_mcp_servers(self) -> list[MCPServerConfig]:
+        return load_mcp_servers(
+            enabled=self.mcp_enabled,
+            servers_file=self.mcp_servers_file,
+            servers_json=self.mcp_servers_json,
+        )
 
     class Config:
         env_file = ".env"

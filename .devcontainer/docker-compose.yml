@@ -6,10 +6,35 @@ services:
       dockerfile: .devcontainer/Dockerfile
     env_file:
       - ../.env
+    environment:
+      # Use service name so app container can reach postgres container
+      DATABASE_URL: postgresql+asyncpg://autonomia:autonomia@postgres:5432/autonomia_db
     ports:
       - "5000:5000"
     volumes:
       - ..:/app
     command: sleep infinity
+    depends_on:
+      - postgres
     extra_hosts:
       - "host.docker.internal:host-gateway"
+
+  postgres:
+    image: pgvector/pgvector:pg16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: autonomia
+      POSTGRES_PASSWORD: autonomia
+      POSTGRES_DB: autonomia_db
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U autonomia -d autonomia_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+volumes:
+  postgres-data:
