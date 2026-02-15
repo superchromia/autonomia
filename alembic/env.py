@@ -7,7 +7,6 @@ from alembic import context
 
 # add your model's MetaData object here
 # for 'autogenerate' support
-from database_url import normalize_database_url_for_container
 from models.base import Base
 
 # this is the Alembic Config object, which provides
