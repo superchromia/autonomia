@@ -1,5 +1,6 @@
 import logging
 
+from sqlalchemy import update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from telethon import events
@@ -11,7 +12,7 @@ from models.chat import Chat as DBChat
 from models.chat_config import ChatConfig
 from models.message import Message as DBMessage
 from models.user import User as DBUser
-from processing.enrich_message import generate_bot_response
+from processing.enrich_message import generate_bot_response, process_message
 from utils.telegram_serializer import safe_telegram_to_dict
 from utils.trigger_checker import check_triggers
 
@@ -138,6 +139,13 @@ async def respond_to_message(session: AsyncSession, message: Message, chat: Chat
                 logger.exception(f"Failed to send bot response: {e}")
 
 
+async def enrich_message_if_enabled(session: AsyncSession, message: Message, chat: Chat) -> None:
+    result = await session.execute(select(ChatConfig).where(ChatConfig.chat_id == chat.id))
+    chat_config = result.scalar_one_or_none()
+    if chat_config and chat_config.enrich_messages:
+        await process_message(session, chat_id=chat.id, message_id=message.id)
+
+
 @tg.on(events.NewMessage(incoming=True))
 async def new_message_handler(event: events.NewMessage.Event):
     logger.info(f"Received NewMessage (outgoing={event.out}): {event}")
@@ -152,6 +160,7 @@ async def new_message_handler(event: events.NewMessage.Event):
                 await create_user(session, user)
             await create_message(session, message, chat, user)
             await session.commit()
+            await enrich_message_if_enabled(session, message, chat)
             await tg.send_read_acknowledge(chat, message)
             await respond_to_message(session, message, chat, user)
         except Exception as e:
@@ -171,6 +180,7 @@ async def new_outgoing_message_handler(event: events.NewMessage.Event):
                 await create_user(session, user)
             await create_message(session, message, chat, user)
             await session.commit()
+            await enrich_message_if_enabled(session, message, chat)
         except Exception as e:
             logger.exception(f"Failed to save message: {e}")
 
@@ -203,12 +213,13 @@ async def message_deleted_handler(event: events.MessageDeleted.Event):
         try:
             # Mark messages as deleted
             await session.execute(
-                DBMessage.__table__.update()
+                update(DBMessage)
                 .where(
                     DBMessage.chat_id == event.chat_id,
                     DBMessage.message_id.in_(event.deleted_ids),
                 )
                 .values(is_deleted=True)
+                .execution_options(synchronize_session="fetch")
             )
             await session.commit()
         except Exception as e:

@@ -347,9 +347,9 @@ def format_message(raw_data, username):
         reply_to = raw_data["reply_to"].get("reply_to_msg_id")
 
     if reply_to:
-        return f'Сообщение {msg_id}: от user_id={username} на id={reply_to}: "{msg_text}"'
+        return f'Сообщение {msg_id}: от {username} на id={reply_to}: "{msg_text}"'
     else:
-        return f'Сообщение {msg_id}: от user_id={username}: "{msg_text}"'
+        return f'Сообщение {msg_id}: от {username}: "{msg_text}"'
 
 
 async def collect_message_context(session, chat_id: int, message_id: int) -> str:

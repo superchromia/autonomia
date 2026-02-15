@@ -103,8 +103,30 @@ async def test_engine(test_database_url: str):
         await conn.run_sync(lambda sync_conn: sync_conn.execute(text("""
             CREATE TABLE IF NOT EXISTS chat_configs (
                 chat_id BIGINT PRIMARY KEY,
+                save_messages BOOLEAN NOT NULL DEFAULT 1,
+                load_from_date TIMESTAMP,
+                system_prompt TEXT,
+                answer_threshold FLOAT,
                 enrich_messages BOOLEAN NOT NULL,
-                recognize_photo BOOLEAN NOT NULL
+                recognize_photo BOOLEAN NOT NULL,
+                response_triggers TEXT,
+                text_model VARCHAR(255),
+                embeddings_model VARCHAR(255),
+                image_model VARCHAR(255)
+            )
+        """)))
+
+        await conn.run_sync(lambda sync_conn: sync_conn.execute(text("""
+            CREATE TABLE IF NOT EXISTS chat_memories (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                chat_id BIGINT NOT NULL,
+                source_message_id BIGINT,
+                memory_text TEXT NOT NULL,
+                memory_type VARCHAR(30) NOT NULL DEFAULT 'fact',
+                importance INTEGER NOT NULL DEFAULT 5,
+                is_active BOOLEAN NOT NULL DEFAULT 1,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         """)))
     

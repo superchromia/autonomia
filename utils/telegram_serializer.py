@@ -1,4 +1,5 @@
 import json
+from datetime import date, datetime, time
 from typing import Any, Dict
 
 
@@ -29,7 +30,7 @@ def _clean_dict(data: Any) -> Any:
         return [_clean_dict(item) for item in data]
     elif isinstance(data, bytes):
         return f"<bytes:{len(data)}>"
-    elif hasattr(data, 'isoformat'):  # datetime objects
+    elif isinstance(data, (datetime, date, time)):
         return data.isoformat()
     elif hasattr(data, '__dict__'):  # custom objects
         return _clean_dict(data.__dict__)
