@@ -28,7 +28,7 @@ def get_database_url():
         "DATABASE_URL",
         "postgresql+asyncpg://postgres:postgres@localhost:5432/telegram",
     )
-    return normalize_database_url_for_container(url)
+    return url
 
 
 def create_database_if_not_exists():
@@ -146,9 +146,7 @@ def run_migrations_online() -> None:
     )
 
     with connectable.connect() as connection:
-        context.configure(
-            connection=connection, target_metadata=target_metadata
-        )
+        context.configure(connection=connection, target_metadata=target_metadata)
 
         with context.begin_transaction():
             context.run_migrations()
