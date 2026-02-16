@@ -28,12 +28,8 @@ class Config(BaseSettings):
     )
 
     # Telegram
-    telegram_api_id: str | None = Field(
-        default=None, env="TELEGRAM_API_ID", description="Telegram API ID"
-    )
-    telegram_api_hash: str | None = Field(
-        default=None, env="TELEGRAM_API_HASH", description="Telegram API Hash"
-    )
+    telegram_api_id: str | None = Field(default=None, env="TELEGRAM_API_ID", description="Telegram API ID")
+    telegram_api_hash: str | None = Field(default=None, env="TELEGRAM_API_HASH", description="Telegram API Hash")
     telethon_session_string: str = Field(
         env="TELETHON_SESSION_STRING",
         description="Telegram session ",
@@ -96,9 +92,7 @@ class Config(BaseSettings):
             try:
                 int(v)
             except ValueError as err:
-                raise ValueError(
-                    "TELEGRAM_API_ID must be a valid integer"
-                ) from err
+                raise ValueError("TELEGRAM_API_ID must be a valid integer") from err
         return v
 
     @field_validator("telegram_api_hash")
@@ -115,21 +109,12 @@ class Config(BaseSettings):
             raise ValueError("SECRET_KEY must be at least 32 characters long")
         return v
 
-    @field_validator("database_url")
-    @classmethod
-    def normalize_database_url(cls, v):
-        return normalize_database_url_for_container(v)
-
     def validate_required_telegram_config(self) -> None:
         """Validate that required Telegram configuration is present"""
         if not self.telegram_api_id:
-            raise ValueError(
-                "TELEGRAM_API_ID environment variable is required"
-            )
+            raise ValueError("TELEGRAM_API_ID environment variable is required")
         if not self.telegram_api_hash:
-            raise ValueError(
-                "TELEGRAM_API_HASH environment variable is required"
-            )
+            raise ValueError("TELEGRAM_API_HASH environment variable is required")
 
     def get_mcp_servers(self) -> list[MCPServerConfig]:
         return load_mcp_servers(
