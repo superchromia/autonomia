@@ -1,8 +1,6 @@
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings
 
-from mcp import MCPServerConfig, load_mcp_servers
-
 
 class Config(BaseSettings):
     """Application configuration using Pydantic for validation"""
@@ -54,16 +52,6 @@ class Config(BaseSettings):
         env="MCP_ENABLED",
         description="Enable integration with external MCP servers",
     )
-    mcp_servers_file: str = Field(
-        default="mcp_servers.json",
-        env="MCP_SERVERS_FILE",
-        description="Path to MCP servers JSON config file",
-    )
-    mcp_servers_json: str | None = Field(
-        default=None,
-        env="MCP_SERVERS_JSON",
-        description="Inline JSON with MCP servers (overrides file entries by name)",
-    )
 
     # Validation
     @field_validator("admin_username")
@@ -114,13 +102,6 @@ class Config(BaseSettings):
             raise ValueError("TELEGRAM_API_ID environment variable is required")
         if not self.telegram_api_hash:
             raise ValueError("TELEGRAM_API_HASH environment variable is required")
-
-    def get_mcp_servers(self) -> list[MCPServerConfig]:
-        return load_mcp_servers(
-            enabled=self.mcp_enabled,
-            servers_file=self.mcp_servers_file,
-            servers_json=self.mcp_servers_json,
-        )
 
     class Config:
         env_file = ".env"

@@ -47,14 +47,7 @@ Telegram bot for LLM-based processing, analyzing and answering messages using Fa
    Optional MCP settings:
    ```env
    MCP_ENABLED=true
-   MCP_SERVERS_FILE=mcp_servers.json
-   # Optional inline override (JSON string)
-   # MCP_SERVERS_JSON={"servers":[...]}
-   ```
-
-   Then copy and edit the example config:
-   ```bash
-   cp mcp_servers.example.json mcp_servers.json
+   # MCP servers are configured only in DB table: mcp_servers
    ```
 
 3. **Run the Application**

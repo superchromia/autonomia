@@ -1,18 +1,30 @@
 import json
 import logging
 import os
-from datetime import UTC, datetime
 
 from openai import AsyncOpenAI
 from pydantic import BaseModel
 
-from mcp import MCPFunctionTool, SSEMCPClient, format_tool_result
-from models import Memory
+from context_builder import (
+    collect_chat_memories,
+    collect_message_context,
+    collect_user_memories,
+    format_message,
+)
+from mcp import (
+    HTTPCPClient,
+    MCPFunctionTool,
+    SSEMCPClient,
+    StdioMCPClient,
+    format_tool_result,
+)
+from mcp.db_config import load_mcp_servers_from_db
 from models.chat import Chat
 from models.chat_config import ChatConfig
 from models.media import Media
 from models.message import Message
 from models.messages_enriched import EnrichedMessage
+from Tools import ToolExecutionContext, execute_builtin_tool, get_builtin_tools
 
 ai_client = AsyncOpenAI(
     base_url=os.environ.get(
@@ -67,150 +79,60 @@ class EnrichedMessageData(BaseModel):
     # new_user_description: List[UserDescription]
 
 
-class BotResponseData(BaseModel):
-    response: str
-    context: str
-    think: str
-
-
-async def _load_mcp_function_tools():
-    from config import config
-
-    servers = [server for server in config.get_mcp_servers() if server.enabled and server.transport == "sse" and server.url]
+async def _load_mcp_function_tools(session):
+    servers = await load_mcp_servers_from_db(session)
+    servers = [server for server in servers if server.enabled]
     clients = []
-    tools_map: dict[str, tuple[SSEMCPClient, MCPFunctionTool]] = {}
+    tools_map: dict[str, tuple[object, MCPFunctionTool]] = {}
     openai_tools = []
 
     for server in servers:
-        client = SSEMCPClient(server)
-        await client.connect()
-        clients.append(client)
-        server_tools = await client.list_tools()
-        for tool in server_tools:
-            safe_name = f"{server.name}_{tool['name']}".replace("-", "_").replace(".", "_")
-            fn = MCPFunctionTool(
-                function_name=f"mcp_{safe_name}"[:64],
-                server_name=server.name,
-                remote_tool_name=tool["name"],
-                description=tool.get("description") or f"MCP tool {tool['name']}",
-                parameters=tool.get("inputSchema") or {"type": "object", "properties": {}},
+        client = None
+        if server.transport == "sse" and server.url:
+            client = SSEMCPClient(server)
+        elif server.transport == "http" and server.url:
+            client = HTTPCPClient(server)
+        elif server.transport == "stdio" and server.command:
+            client = StdioMCPClient(server)
+        else:
+            logger.warning(
+                "Skipping MCP server %s due to invalid transport configuration",
+                server.name,
             )
-            tools_map[fn.function_name] = (client, fn)
-            openai_tools.append(fn.to_openai_tool())
+            continue
+
+        try:
+            await client.connect()
+            clients.append(client)
+            server_tools = await client.list_tools()
+            for tool in server_tools:
+                safe_name = f"{server.name}_{tool['name']}".replace("-", "_").replace(".", "_")
+                fn = MCPFunctionTool(
+                    function_name=f"mcp_{safe_name}"[:64],
+                    server_name=server.name,
+                    remote_tool_name=tool["name"],
+                    description=tool.get("description") or f"MCP tool {tool['name']}",
+                    parameters=tool.get("inputSchema") or {"type": "object", "properties": {}},
+                )
+                tools_map[fn.function_name] = (client, fn)
+                openai_tools.append(fn.to_openai_tool())
+        except Exception as exc:
+            logger.warning(
+                "Failed to initialize MCP server %s (%s): %s",
+                server.name,
+                server.transport,
+                exc,
+            )
+            try:
+                await client.close()
+            except Exception:
+                pass
 
     return clients, tools_map, openai_tools
 
 
 def _get_builtin_tools() -> list[dict]:
-    return [
-        {
-            "type": "function",
-            "function": {
-                "name": "get_user_information_by_id",
-                "description": "Get user profile details by Telegram user id. ALways use this function to check user info. Always check user info before responding to a message.",
-                "parameters": {
-                    "type": "object",
-                    "properties": {
-                        "user_id": {
-                            "type": "integer",
-                            "description": "Telegram user id",
-                        }
-                    },
-                    "required": ["user_id"],
-                },
-            },
-        },
-        {
-            "type": "function",
-            "function": {
-                "name": "get_current_time",
-                "description": "Get current UTC time in ISO format.",
-                "parameters": {
-                    "type": "object",
-                    "properties": {},
-                },
-            },
-        },
-        {
-            "type": "function",
-            "function": {
-                "name": "get_message_content_by_number",
-                "description": "Get message content by its message number (message_id) in current chat.",
-                "parameters": {
-                    "type": "object",
-                    "properties": {
-                        "message_number": {
-                            "type": "integer",
-                            "description": "Message id/number in current chat",
-                        }
-                    },
-                    "required": ["message_number"],
-                },
-            },
-        },
-        {
-            "type": "function",
-            "function": {
-                "name": "save_memory",
-                "description": ("Save important long-term memory. " "Can save chat memory, user memory, or both."),
-                "parameters": {
-                    "type": "object",
-                    "properties": {
-                        "memory_text": {
-                            "type": "string",
-                            "description": "Fact/rule/preference to remember",
-                        },
-                        "memory_type": {
-                            "type": "string",
-                            "description": "fact, rule, or preference",
-                        },
-                        "importance": {
-                            "type": "integer",
-                            "description": "Importance from 1 to 10",
-                        },
-                        "source_message_id": {
-                            "type": "integer",
-                            "description": "Message id where memory came from",
-                        },
-                        "source_message_position": {
-                            "type": "integer",
-                            "description": "Position/order id of the source message in chat",
-                        },
-                        "user_id": {
-                            "type": "integer",
-                            "description": "Telegram user id for user-specific memory",
-                        },
-                        "memory_scope": {
-                            "type": "string",
-                            "description": "chat, user, or both",
-                        },
-                    },
-                    "required": ["memory_text"],
-                },
-            },
-        },
-        {
-            "type": "function",
-            "function": {
-                "name": "get_user_memories",
-                "description": "Get all active long-term memories about a specific user.",
-                "parameters": {
-                    "type": "object",
-                    "properties": {
-                        "user_id": {
-                            "type": "integer",
-                            "description": "Telegram user id",
-                        },
-                        "limit": {
-                            "type": "integer",
-                            "description": "Maximum number of memories to return",
-                        },
-                    },
-                    "required": ["user_id"],
-                },
-            },
-        },
-    ]
+    return get_builtin_tools()
 
 
 async def _execute_builtin_tool(
@@ -222,395 +144,14 @@ async def _execute_builtin_tool(
     current_sender_id: int | None = None,
     current_chat_type: str | None = None,
 ) -> str | None:
-    from sqlalchemy.future import select
-
-    if function_name == "get_current_time":
-        return datetime.now(UTC).isoformat()
-
-    if function_name == "get_user_information_by_id":
-        user_id = arguments.get("user_id")
-        if user_id is None:
-            return "Missing required argument: user_id"
-
-        try:
-            from telethon.tl.functions.users import GetFullUserRequest
-
-            from dependency import dependency
-
-            telethon_user = await dependency.telegram_client.get_entity(int(user_id))
-            full = await dependency.telegram_client(GetFullUserRequest(id=telethon_user))
-        except Exception as exc:
-            return f"Failed to fetch full user {user_id} via Telethon: {exc}"
-
-        if hasattr(full, "to_dict"):
-            raw_full = full.to_dict()
-        elif hasattr(full, "__dict__"):
-            raw_full = full.__dict__
-        else:
-            raw_full = {"value": str(full)}
-        result = json.dumps(raw_full, ensure_ascii=False, default=str)
-        logger.info(f"Tool get_user_information_by_id result: {result}")
-        return result
-
-    if function_name == "save_memory":
-        memory_text = (arguments.get("memory_text") or "").strip()
-        if not memory_text:
-            return "Missing required argument: memory_text"
-
-        memory_type = (arguments.get("memory_type") or "fact").strip().lower()
-        if memory_type not in {"fact", "rule", "preference"}:
-            memory_type = "fact"
-
-        importance = arguments.get("importance", 7)
-        try:
-            importance = int(importance)
-        except (TypeError, ValueError):
-            importance = 7
-        importance = max(1, min(10, importance))
-
-        source_message_id = arguments.get("source_message_id", current_message_id)
-        if source_message_id is not None:
-            try:
-                source_message_id = int(source_message_id)
-            except (TypeError, ValueError):
-                source_message_id = current_message_id
-
-        source_message_position = arguments.get(
-            "source_message_position",
-            source_message_id,
-        )
-        if source_message_position is not None:
-            try:
-                source_message_position = int(source_message_position)
-            except (TypeError, ValueError):
-                source_message_position = source_message_id
-
-        target_user_id = arguments.get("user_id", current_sender_id)
-        if target_user_id is not None:
-            try:
-                target_user_id = int(target_user_id)
-            except (TypeError, ValueError):
-                target_user_id = current_sender_id
-
-        memory_scope = (arguments.get("memory_scope") or "both").strip().lower()
-        if memory_scope not in {"chat", "user", "both"}:
-            memory_scope = "both"
-
-        # In direct user chats, do not duplicate memory into both scopes.
-        if current_chat_type and current_chat_type.lower() == "user" and memory_scope == "both":
-            memory_scope = "user"
-
-        scopes_to_save: list[str] = []
-        if memory_scope in {"chat", "both"}:
-            scopes_to_save.append("chat")
-        if memory_scope in {"user", "both"} and target_user_id is not None:
-            scopes_to_save.append("user")
-
-        if not scopes_to_save:
-            return "No valid memory scope to save"
-
-        saved_items: list[dict] = []
-        for scope in scopes_to_save:
-            if scope == "chat":
-                existing_result = await session.execute(
-                    select(Memory).where(
-                        Memory.chat_id == chat_id,
-                        Memory.user_id.is_(None),
-                        Memory.memory_text == memory_text,
-                        Memory.is_active.is_(True),
-                    )
-                )
-                existing_memory = existing_result.scalar_one_or_none()
-                if existing_memory:
-                    existing_memory.memory_type = memory_type
-                    existing_memory.importance = max(existing_memory.importance, importance)
-                    if source_message_id is not None:
-                        existing_memory.source_message_id = source_message_id
-                    if source_message_position is not None:
-                        existing_memory.source_message_position = source_message_position
-                    saved_items.append(
-                        {
-                            "scope": "chat",
-                            "status": "updated",
-                            "memory_id": existing_memory.id,
-                        }
-                    )
-                    continue
-
-                memory = Memory(
-                    chat_id=chat_id,
-                    user_id=None,
-                    source_message_id=source_message_id,
-                    source_message_position=source_message_position,
-                    memory_text=memory_text,
-                    memory_type=memory_type,
-                    importance=importance,
-                    is_active=True,
-                )
-                session.add(memory)
-                await session.flush()
-                saved_items.append(
-                    {
-                        "scope": "chat",
-                        "status": "saved",
-                        "memory_id": memory.id,
-                    }
-                )
-                continue
-
-            existing_result = await session.execute(
-                select(Memory).where(
-                    Memory.user_id == target_user_id,
-                    Memory.memory_text == memory_text,
-                    Memory.is_active.is_(True),
-                )
-            )
-            existing_memory = existing_result.scalar_one_or_none()
-            if existing_memory:
-                existing_memory.memory_type = memory_type
-                existing_memory.importance = max(existing_memory.importance, importance)
-                if source_message_id is not None:
-                    existing_memory.source_message_id = source_message_id
-                if source_message_position is not None:
-                    existing_memory.source_message_position = source_message_position
-                saved_items.append(
-                    {
-                        "scope": "user",
-                        "status": "updated",
-                        "memory_id": existing_memory.id,
-                    }
-                )
-                continue
-
-            memory = Memory(
-                chat_id=chat_id,
-                user_id=target_user_id,
-                source_message_id=source_message_id,
-                source_message_position=source_message_position,
-                memory_text=memory_text,
-                memory_type=memory_type,
-                importance=importance,
-                is_active=True,
-            )
-            session.add(memory)
-            await session.flush()
-            saved_items.append(
-                {
-                    "scope": "user",
-                    "status": "saved",
-                    "memory_id": memory.id,
-                    "user_id": target_user_id,
-                }
-            )
-
-        await session.commit()
-        return json.dumps(
-            {
-                "status": "ok",
-                "memory_text": memory_text,
-                "saved_items": saved_items,
-                "source_message_id": source_message_id,
-                "source_message_position": source_message_position,
-            },
-            ensure_ascii=False,
-        )
-
-    if function_name == "get_user_memories":
-        user_id = arguments.get("user_id")
-        if user_id is None:
-            return "Missing required argument: user_id"
-        try:
-            user_id = int(user_id)
-        except (TypeError, ValueError):
-            return "Invalid user_id"
-
-        limit = arguments.get("limit", 50)
-        try:
-            limit = int(limit)
-        except (TypeError, ValueError):
-            limit = 50
-        limit = max(1, min(200, limit))
-
-        result = await session.execute(
-            select(Memory)
-            .where(
-                Memory.user_id == user_id,
-                Memory.is_active.is_(True),
-            )
-            .order_by(Memory.importance.desc(), Memory.updated_at.desc())
-            .limit(limit)
-        )
-        memories = result.scalars().all()
-        return json.dumps(
-            {
-                "user_id": user_id,
-                "memories": [
-                    {
-                        "id": memory.id,
-                        "chat_id": memory.chat_id,
-                        "memory_text": memory.memory_text,
-                        "memory_type": memory.memory_type,
-                        "importance": memory.importance,
-                        "source_message_id": memory.source_message_id,
-                        "source_message_position": memory.source_message_position,
-                    }
-                    for memory in memories
-                ],
-            },
-            ensure_ascii=False,
-        )
-
-    if function_name == "get_message_content_by_number":
-        message_number = arguments.get("message_number")
-        if message_number is None:
-            return "Missing required argument: message_number"
-        result = await session.execute(
-            select(Message).where(
-                Message.chat_id == chat_id,
-                Message.message_id == int(message_number),
-            )
-        )
-        msg = result.scalar_one_or_none()
-        if not msg:
-            return f"Message {message_number} not found in chat {chat_id}"
-
-        text = None
-        if isinstance(msg.raw_data, dict):
-            text = msg.raw_data.get("message")
-        return json.dumps(
-            {
-                "message_id": msg.message_id,
-                "chat_id": msg.chat_id,
-                "sender_id": msg.sender_id,
-                "date": msg.date.isoformat() if msg.date else None,
-                "text": text,
-                "message_type": msg.message_type,
-            },
-            ensure_ascii=False,
-        )
-
-    return None
-
-
-def _format_memory_line(memory: Memory) -> str:
-    source_position = memory.source_message_position or memory.source_message_id
-    source_part = f" @msg={source_position}" if source_position is not None else ""
-    return f"- [{memory.memory_type}|{memory.importance}/10]{source_part} {memory.memory_text}"
-
-
-async def collect_chat_memories(session, chat_id: int, limit: int = 20) -> str:
-    from sqlalchemy.future import select
-
-    try:
-        result = await session.execute(
-            select(Memory)
-            .where(
-                Memory.chat_id == chat_id,
-                Memory.user_id.is_(None),
-                Memory.is_active.is_(True),
-            )
-            .order_by(Memory.importance.desc(), Memory.updated_at.desc())
-            .limit(limit)
-        )
-        memories = result.scalars().all()
-    except Exception as exc:
-        logger.warning("Failed to load chat memories for chat %s: %s", chat_id, exc)
-        return ""
-
-    if not memories:
-        return ""
-
-    return "\n".join(_format_memory_line(memory) for memory in memories)
-
-
-async def collect_user_memories(session, user_id: int | None, limit: int = 20) -> str:
-    if user_id is None:
-        return ""
-
-    from sqlalchemy.future import select
-
-    try:
-        result = await session.execute(
-            select(Memory)
-            .where(
-                Memory.user_id == user_id,
-                Memory.is_active.is_(True),
-            )
-            .order_by(Memory.importance.desc(), Memory.updated_at.desc())
-            .limit(limit)
-        )
-        memories = result.scalars().all()
-    except Exception as exc:
-        logger.warning("Failed to load user memories for user %s: %s", user_id, exc)
-        return ""
-
-    if not memories:
-        return ""
-    return "\n".join(_format_memory_line(memory) for memory in memories)
-
-
-def format_message(raw_data, username):
-    """
-    Formats a message from raw_data dict as:
-    "@username написал id=123: "Сообщение 1"
-    "@username ответил  id=124 "Сообщение 2" на id=123"
-    """
-    msg_id = raw_data.get("id")
-    msg_text = raw_data.get("message", "")
-
-    reply_to = None
-    if "reply_to" in raw_data and isinstance(raw_data["reply_to"], dict):
-        reply_to = raw_data["reply_to"].get("reply_to_msg_id")
-
-    if reply_to:
-        return f'Сообщение {msg_id}: от user_id={username} на id={reply_to}: "{msg_text}"'
-    else:
-        return f'Сообщение {msg_id}: от user_id={username}: "{msg_text}"'
-
-
-async def collect_message_context(session, chat_id: int, message_id: int) -> str:
-    from sqlalchemy.future import select
-
-    # Get current message
-    result = await session.execute(select(Message).where(Message.chat_id == chat_id, Message.message_id == message_id))
-    message = result.scalar_one_or_none()
-    if not message:
-        return "Message not found"
-
-    # Get previous messages
-    result = await session.execute(
-        select(Message).where(Message.chat_id == chat_id, Message.message_id < message_id).order_by(Message.message_id.desc()).limit(50)
+    context = ToolExecutionContext(
+        session=session,
+        chat_id=chat_id,
+        current_message_id=current_message_id,
+        current_sender_id=current_sender_id,
+        current_chat_type=current_chat_type,
     )
-    previous_messages = result.scalars().all()
-
-    previous_messages_formatted = "\n".join(format_message(msg.raw_data, msg.sender_id) for msg in previous_messages)
-    chat_memories = await collect_chat_memories(session, chat_id=chat_id)
-    user_memories = await collect_user_memories(session, user_id=message.sender_id)
-    chat_result = await session.execute(select(Chat).where(Chat.id == chat_id))
-    chat = chat_result.scalar_one_or_none()
-    is_direct_user_chat = bool(chat and isinstance(chat.chat_type, str) and chat.chat_type.lower() == "user")
-
-    if is_direct_user_chat:
-        # In direct user chats avoid combining duplicated chat+user memories.
-        memory_context = user_memories or chat_memories
-    else:
-        combined_blocks = []
-        if chat_memories:
-            combined_blocks.append("ФАКТЫ О ЧАТЕ:\n" + chat_memories)
-        if user_memories:
-            combined_blocks.append(f"ФАКТЫ О ПОЛЬЗОВАТЕЛЕ user_id={message.sender_id}:\n" + user_memories)
-        memory_context = "\n\n".join(combined_blocks)
-
-    return f"""
-    ПАМЯТЬ О ЧАТЕ:
-    {memory_context if memory_context else "(пока пусто)"}
-
-    ПРЕДЫДУЩИЕ СООБЩЕНИЯ:
-    {previous_messages_formatted}
-
-    ТЕКУЩЕЕ СООБЩЕНИЕ:
-    {format_message(message.raw_data, message.sender_id)}
-    """
+    return await execute_builtin_tool(context, function_name, arguments)
 
 
 async def process_message(session, chat_id: int, message_id: int) -> Message:
@@ -691,12 +232,7 @@ async def process_message(session, chat_id: int, message_id: int) -> Message:
     await session.commit()
 
 
-async def generate_bot_response(session, chat_id: int, message_id: int) -> str | None:
-    """
-    Generate a bot response to a message in a chat.
-    Returns the response text or None if the bot should not respond.
-    """
-    # Get chat config for model settings
+async def _load_response_settings(session, chat_id: int) -> tuple[str, str]:
     from sqlalchemy.future import select
 
     result = await session.execute(select(ChatConfig).where(ChatConfig.chat_id == chat_id))
@@ -704,16 +240,16 @@ async def generate_bot_response(session, chat_id: int, message_id: int) -> str |
 
     if not chat_config:
         raise ValueError(f"ChatConfig not found for chat_id={chat_id}")
-
     if not chat_config.text_model:
         raise ValueError(f"text_model not configured for chat_id={chat_id}")
     if not chat_config.system_prompt:
         raise ValueError(f"system_prompt not configured for chat_id={chat_id}")
+    return chat_config.text_model, chat_config.system_prompt
 
-    text_model = chat_config.text_model
-    system_prompt = chat_config.system_prompt
 
-    context = await collect_message_context(session, chat_id=chat_id, message_id=message_id)
+async def _load_message_metadata(session, chat_id: int, message_id: int) -> tuple[int | None, str | None]:
+    from sqlalchemy.future import select
+
     current_message_result = await session.execute(
         select(Message).where(
             Message.chat_id == chat_id,
@@ -722,22 +258,98 @@ async def generate_bot_response(session, chat_id: int, message_id: int) -> str |
     )
     current_message = current_message_result.scalar_one_or_none()
     current_sender_id = current_message.sender_id if current_message else None
+
     chat_result = await session.execute(select(Chat).where(Chat.id == chat_id))
     chat = chat_result.scalar_one_or_none()
     current_chat_type = chat.chat_type if chat else None
+    return current_sender_id, current_chat_type
 
-    # Get photo description if available
-    photo_description = None
-    result = await session.execute(select(Media).where(Media.chat_id == chat_id, Media.message_id == message_id, Media.media_type == "photo"))
+
+async def _load_photo_description(session, chat_id: int, message_id: int) -> str | None:
+    from sqlalchemy.future import select
+
+    result = await session.execute(
+        select(Media).where(
+            Media.chat_id == chat_id,
+            Media.message_id == message_id,
+            Media.media_type == "photo",
+        )
+    )
     media = result.scalar_one_or_none()
     if media and media.text_description:
-        photo_description = media.text_description
+        return media.text_description
+    return None
 
-    # Add photo description to context if available
-    if photo_description:
-        context_with_photo = f"{context}\n\nОПИСАНИЕ ФОТОГРАФИИ В СООБЩЕНИИ:\n{photo_description}"
-    else:
-        context_with_photo = context
+
+def _build_context_with_photo(context: str, photo_description: str | None) -> str:
+    if not photo_description:
+        return context
+    return f"{context}\n\nОПИСАНИЕ ФОТОГРАФИИ В СООБЩЕНИИ:\n{photo_description}"
+
+
+def _build_generation_messages(system_prompt: str, context_with_photo: str, has_tools: bool) -> list[dict]:
+    messages = [
+        {
+            "role": "system",
+            "content": system_prompt,
+        },
+        {
+            "role": "system",
+            "content": (
+                "Отвечай только обычным текстом, без JSON, без разметки структур, "
+                "без служебных полей. "
+                "Не опирайся на память из текста контекста: "
+                "память нужно получать только через tools. "
+                "Если пользователь просит запомнить информацию, "
+                "передает правило, или сообщает устойчивое предпочтение, "
+                "сохрани это через tool save_memory с memory_scope='both'. "
+                "Если отвечать не нужно, верни пустую строку."
+            ),
+        },
+    ]
+    if has_tools:
+        messages.append(
+            {
+                "role": "system",
+                "content": ("Перед ответом используй tools для памяти и фактов. " "Для памяти вызывай get_chat_memories и get_user_memories."),
+            }
+        )
+    messages.append(
+        {
+            "role": "user",
+            "content": [
+                {
+                    "type": "text",
+                    "text": context_with_photo,
+                }
+            ],
+        }
+    )
+    return messages
+
+
+async def generate_bot_response(session, chat_id: int, message_id: int) -> str | None:
+    """
+    Generate a bot response to a message in a chat.
+    Returns the response text or None if the bot should not respond.
+    """
+    text_model, system_prompt = await _load_response_settings(session, chat_id)
+    context = await collect_message_context(
+        session,
+        chat_id=chat_id,
+        message_id=message_id,
+    )
+    current_sender_id, current_chat_type = await _load_message_metadata(
+        session,
+        chat_id=chat_id,
+        message_id=message_id,
+    )
+    photo_description = await _load_photo_description(
+        session,
+        chat_id=chat_id,
+        message_id=message_id,
+    )
+    context_with_photo = _build_context_with_photo(context, photo_description)
 
     logger.info(f"Generating bot response for message {message_id} in chat {chat_id}")
 
@@ -745,12 +357,12 @@ async def generate_bot_response(session, chat_id: int, message_id: int) -> str |
     try:
         from config import config
 
-        tools_map: dict[str, tuple[SSEMCPClient, MCPFunctionTool]] = {}
+        tools_map: dict[str, tuple[object, MCPFunctionTool]] = {}
         mcp_openai_tools = []
         builtin_tools = _get_builtin_tools()
         if config.mcp_enabled:
             try:
-                mcp_clients, tools_map, mcp_openai_tools = await _load_mcp_function_tools()
+                mcp_clients, tools_map, mcp_openai_tools = await _load_mcp_function_tools(session)
                 if mcp_openai_tools:
                     logger.info(
                         "Loaded %s MCP tools for generation",
@@ -759,44 +371,11 @@ async def generate_bot_response(session, chat_id: int, message_id: int) -> str |
             except Exception as exc:
                 logger.warning("Failed to initialize MCP tools: %s", exc)
 
-        messages = [
-            {
-                "role": "system",
-                "content": system_prompt,
-            },
-            {
-                "role": "system",
-                "content": (
-                    "Отвечай только обычным текстом, без JSON, без разметки структур, "
-                    "без служебных полей. "
-                    "Если пользователь просит запомнить информацию, "
-                    "передает правило, или сообщает устойчивое предпочтение, "
-                    "сохрани это через tool save_memory с memory_scope='both'. "
-                    "Если отвечать не нужно, верни пустую строку."
-                ),
-            },
-        ]
         all_tools = builtin_tools + mcp_openai_tools
-        if all_tools:
-            messages.append(
-                {
-                    "role": "system",
-                    "content": ("При необходимости используй tools для получения фактов перед ответом."),
-                }
-            )
-
-        messages.extend(
-            [
-                {
-                    "role": "user",
-                    "content": [
-                        {
-                            "type": "text",
-                            "text": context_with_photo,
-                        }
-                    ],
-                }
-            ]
+        messages = _build_generation_messages(
+            system_prompt=system_prompt,
+            context_with_photo=context_with_photo,
+            has_tools=bool(all_tools),
         )
         response_text = None
         max_tool_iterations = 8

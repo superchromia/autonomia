@@ -8,6 +8,7 @@ from starlette.requests import Request
 from config import config
 from models.chat import Chat
 from models.chat_config import ChatConfig
+from models.mcp_server import MCPServer
 from models.media import Media
 from models.memory import Memory
 from models.message import Message
@@ -332,15 +333,57 @@ class MemoryAdmin(ModelView, model=Memory):
     form_excluded_columns: ClassVar = ["created_at", "updated_at"]
 
 
+class MCPServerAdmin(ModelView, model=MCPServer):
+    """Admin panel for MCP server settings."""
+
+    name = "MCP Server"
+    name_plural = "MCP Servers"
+    icon = "fa-solid fa-plug"
+
+    column_list: ClassVar = [
+        MCPServer.id,
+        MCPServer.name,
+        MCPServer.enabled,
+        MCPServer.transport,
+        MCPServer.address,
+        MCPServer.auth_type,
+        MCPServer.usage_description,
+        MCPServer.created_at,
+        MCPServer.updated_at,
+    ]
+
+    column_searchable_list: ClassVar = [
+        MCPServer.name,
+        MCPServer.transport,
+        MCPServer.address,
+        MCPServer.auth_type,
+        MCPServer.usage_description,
+    ]
+
+    column_sortable_list: ClassVar = [
+        MCPServer.id,
+        MCPServer.name,
+        MCPServer.enabled,
+        MCPServer.transport,
+        MCPServer.created_at,
+        MCPServer.updated_at,
+    ]
+
+    column_default_sort = ("updated_at", True)
+
+    can_create = True
+    can_edit = True
+    can_delete = True
+
+    form_excluded_columns: ClassVar = ["created_at", "updated_at"]
+
+
 class AdminAuth(AuthenticationBackend):
     async def login(self, request: Request) -> bool:
         form = await request.form()
         username, password = form["username"], form["password"]
 
-        if (
-            username == config.admin_username
-            and password == config.admin_password
-        ):
+        if username == config.admin_username and password == config.admin_password:
             request.session.update({"admin_auth": True})
             return True
         return False
@@ -375,5 +418,6 @@ def setup_admin(app, engine):
     admin.add_view(MessageAdmin)
     admin.add_view(EnrichedMessageAdmin)
     admin.add_view(MemoryAdmin)
+    admin.add_view(MCPServerAdmin)
 
     return admin

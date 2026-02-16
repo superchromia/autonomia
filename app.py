@@ -1,8 +1,8 @@
-import asyncio
 import logging
-import os
 from contextlib import asynccontextmanager
 from pathlib import Path
+
+# pylint: disable=unused-import
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
@@ -19,25 +19,22 @@ from logging_config import setup_logging
 setup_logging()
 
 # Telethon hook is automatically registered when imported
-import jobs.telethon_hook  # noqa: F401
-from admin import setup_admin
-from api import v1_router
-from config import config
-from dependency import dependency
-from jobs.enrich_old_messages import enrich_old_messages_job
-from jobs.fetch_messages import fetch_all_messages_job
-from jobs.sync_dialogs import sync_dialogs_job
+import jobs.telethon_hook  # noqa: F401, E402
+from admin import setup_admin  # noqa: E402
+from api import v1_router  # noqa: E402
+from config import config  # noqa: E402
+from dependency import dependency  # noqa: E402
+from jobs.fetch_messages import fetch_all_messages_job  # noqa: E402
+from jobs.sync_dialogs import sync_dialogs_job  # noqa: E402
 
 logger = logging.getLogger("app")
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI):
-    mcp_servers = config.get_mcp_servers()
+async def lifespan(_app: FastAPI):
     logger.info(
-        "MCP configuration loaded: enabled=%s, servers=%s",
+        "MCP configuration loaded: enabled=%s (DB-only)",
         config.mcp_enabled,
-        [server.name for server in mcp_servers],
     )
 
     logger.info("Applying Alembic migrations...")
@@ -61,11 +58,6 @@ async def lifespan(app: FastAPI):
         sync_dialogs_job,
         CronTrigger.from_crontab("3/10 * * * *"),
     )
-    scheduler.add_job(
-        enrich_old_messages_job,
-        CronTrigger.from_crontab("*/5 * * * *"),
-    )
-
     scheduler.start()
     await dependency.init_telegram_client()
 
@@ -95,7 +87,11 @@ class HTTPSRedirectMiddleware(BaseHTTPMiddleware):
             https_url = f"https://{forwarded_host}{request.url.path}"
             if request.url.query:
                 https_url += f"?{request.url.query}"
-            return Response(status_code=301, headers={"Location": https_url}, content="Redirecting to HTTPS")
+            return Response(
+                status_code=301,
+                headers={"Location": https_url},
+                content="Redirecting to HTTPS",
+            )
 
         # Set the scheme to HTTPS if we're behind a proxy
         if forwarded_proto == "https":
