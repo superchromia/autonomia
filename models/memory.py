@@ -23,10 +23,17 @@ class Memory(Base):
     chat_id = Column(
         BigInteger,
         ForeignKey("chats.id", ondelete="CASCADE"),
-        nullable=False,
+        nullable=True,
+        index=True,
+    )
+    user_id = Column(
+        BigInteger,
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=True,
         index=True,
     )
     source_message_id = Column(BigInteger, nullable=True)
+    source_message_position = Column(BigInteger, nullable=True)
 
     memory_text = Column(Text, nullable=False)
     memory_type = Column(String(30), nullable=False, default="fact")
@@ -48,10 +55,13 @@ class Memory(Base):
     __table_args__ = (
         Index("ix_chat_memories_chat_active", "chat_id", "is_active"),
         Index("ix_chat_memories_importance", "chat_id", "importance"),
+        Index("ix_chat_memories_user_active", "user_id", "is_active"),
+        Index("ix_chat_memories_user_importance", "user_id", "importance"),
     )
 
     def __repr__(self):
         return (
             f"<Memory(id={self.id}, chat_id={self.chat_id}, "
+            f"user_id={self.user_id}, "
             f"type={self.memory_type}, importance={self.importance})>"
         )

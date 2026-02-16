@@ -290,7 +290,9 @@ class MemoryAdmin(ModelView, model=Memory):
     column_list: ClassVar = [
         Memory.id,
         Memory.chat_id,
+        Memory.user_id,
         Memory.source_message_id,
+        Memory.source_message_position,
         Memory.memory_type,
         Memory.importance,
         Memory.is_active,
@@ -301,6 +303,7 @@ class MemoryAdmin(ModelView, model=Memory):
 
     column_searchable_list: ClassVar = [
         Memory.chat_id,
+        Memory.user_id,
         Memory.memory_type,
         Memory.memory_text,
     ]
@@ -308,6 +311,7 @@ class MemoryAdmin(ModelView, model=Memory):
     column_sortable_list: ClassVar = [
         Memory.id,
         Memory.chat_id,
+        Memory.user_id,
         Memory.memory_type,
         Memory.importance,
         Memory.is_active,
@@ -333,7 +337,10 @@ class AdminAuth(AuthenticationBackend):
         form = await request.form()
         username, password = form["username"], form["password"]
 
-        if username == config.admin_username and password == config.admin_password:
+        if (
+            username == config.admin_username
+            and password == config.admin_password
+        ):
             request.session.update({"admin_auth": True})
             return True
         return False

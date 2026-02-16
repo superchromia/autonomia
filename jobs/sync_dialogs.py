@@ -115,7 +115,7 @@ async def sync_dialogs_job():
                             existing_participant.is_fake = getattr(participant, "fake", False)
                             existing_participant.is_premium = getattr(participant, "premium", False)
                             existing_participant.raw_data = safe_telegram_to_dict(participant)
-                            logger.info(f"Updated existing participant: {participant}")
+                            logger.debug(f"Updated existing participant: {participant}")
                         else:
                             # Create new participant
                             db_participant = User(

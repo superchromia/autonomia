@@ -36,11 +36,14 @@ async def test_engine(test_database_url: str):
         echo=False,
         poolclass=StaticPool,
     )
-    
+
     # Create tables without JSONB columns for testing
     async with engine.begin() as conn:
         # Create simplified tables for testing
-        await conn.run_sync(lambda sync_conn: sync_conn.execute(text("""
+        await conn.run_sync(
+            lambda sync_conn: sync_conn.execute(
+                text(
+                    """
             CREATE TABLE IF NOT EXISTS chats (
                 id BIGINT PRIMARY KEY,
                 chat_type VARCHAR(20) NOT NULL,
@@ -54,9 +57,15 @@ async def test_engine(test_database_url: str):
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
-        """)))
-        
-        await conn.run_sync(lambda sync_conn: sync_conn.execute(text("""
+        """
+                )
+            )
+        )
+
+        await conn.run_sync(
+            lambda sync_conn: sync_conn.execute(
+                text(
+                    """
             CREATE TABLE IF NOT EXISTS users (
                 id BIGINT PRIMARY KEY,
                 username VARCHAR(100),
@@ -71,9 +80,15 @@ async def test_engine(test_database_url: str):
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
-        """)))
-        
-        await conn.run_sync(lambda sync_conn: sync_conn.execute(text("""
+        """
+                )
+            )
+        )
+
+        await conn.run_sync(
+            lambda sync_conn: sync_conn.execute(
+                text(
+                    """
             CREATE TABLE IF NOT EXISTS messages (
                 message_id BIGINT,
                 chat_id BIGINT,
@@ -87,9 +102,15 @@ async def test_engine(test_database_url: str):
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 PRIMARY KEY (message_id, chat_id)
             )
-        """)))
-        
-        await conn.run_sync(lambda sync_conn: sync_conn.execute(text("""
+        """
+                )
+            )
+        )
+
+        await conn.run_sync(
+            lambda sync_conn: sync_conn.execute(
+                text(
+                    """
             CREATE TABLE IF NOT EXISTS messages_enriched (
                 chat_id BIGINT,
                 message_id BIGINT,
@@ -98,40 +119,27 @@ async def test_engine(test_database_url: str):
                 embeddings TEXT,
                 PRIMARY KEY (chat_id, message_id)
             )
-        """)))
-        
-        await conn.run_sync(lambda sync_conn: sync_conn.execute(text("""
+        """
+                )
+            )
+        )
+
+        await conn.run_sync(
+            lambda sync_conn: sync_conn.execute(
+                text(
+                    """
             CREATE TABLE IF NOT EXISTS chat_configs (
                 chat_id BIGINT PRIMARY KEY,
-                save_messages BOOLEAN NOT NULL DEFAULT 1,
-                load_from_date TIMESTAMP,
-                system_prompt TEXT,
-                answer_threshold FLOAT,
                 enrich_messages BOOLEAN NOT NULL,
-                recognize_photo BOOLEAN NOT NULL,
-                response_triggers TEXT,
-                text_model VARCHAR(255),
-                embeddings_model VARCHAR(255),
-                image_model VARCHAR(255)
+                recognize_photo BOOLEAN NOT NULL
             )
-        """)))
+        """
+                )
+            )
+        )
 
-        await conn.run_sync(lambda sync_conn: sync_conn.execute(text("""
-            CREATE TABLE IF NOT EXISTS chat_memories (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                chat_id BIGINT NOT NULL,
-                source_message_id BIGINT,
-                memory_text TEXT NOT NULL,
-                memory_type VARCHAR(30) NOT NULL DEFAULT 'fact',
-                importance INTEGER NOT NULL DEFAULT 5,
-                is_active BOOLEAN NOT NULL DEFAULT 1,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        """)))
-    
     yield engine
-    
+
     await engine.dispose()
 
 
