@@ -1,7 +1,6 @@
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings
 
-from database_url import normalize_database_url_for_container
 from mcp import MCPServerConfig, load_mcp_servers
 
 
