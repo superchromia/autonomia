@@ -13,6 +13,7 @@ from models.media import Media
 from models.memory import Memory
 from models.message import Message
 from models.messages_enriched import EnrichedMessage
+from models import ScheduledTask
 from models.user import User
 
 
@@ -114,6 +115,11 @@ class ChatConfigAdmin(ModelView, model=ChatConfig):
 
     column_list: ClassVar = [
         ChatConfig.chat_id,
+        ChatConfig.text_model,
+        ChatConfig.response_max_tokens,
+        ChatConfig.response_temperature,
+        ChatConfig.response_presence_penalty,
+        ChatConfig.response_frequency_penalty,
         ChatConfig.enrich_messages,
         ChatConfig.recognize_photo,
     ]
@@ -124,6 +130,10 @@ class ChatConfigAdmin(ModelView, model=ChatConfig):
 
     column_sortable_list: ClassVar = [
         ChatConfig.chat_id,
+        ChatConfig.response_max_tokens,
+        ChatConfig.response_temperature,
+        ChatConfig.response_presence_penalty,
+        ChatConfig.response_frequency_penalty,
         ChatConfig.enrich_messages,
         ChatConfig.recognize_photo,
     ]
@@ -378,12 +388,58 @@ class MCPServerAdmin(ModelView, model=MCPServer):
     form_excluded_columns: ClassVar = ["created_at", "updated_at"]
 
 
+class ScheduledTaskAdmin(ModelView, model=ScheduledTask):
+    """Admin panel for scheduled tasks."""
+
+    name = "Scheduled Task"
+    name_plural = "Scheduled Tasks"
+    icon = "fa-solid fa-calendar"
+
+    column_list: ClassVar = [
+        ScheduledTask.id,
+        ScheduledTask.chat_id,
+        ScheduledTask.enabled,
+        ScheduledTask.cron_expression,
+        ScheduledTask.run_at,
+        ScheduledTask.send_to_chat,
+        ScheduledTask.planned_sender_id,
+        ScheduledTask.reply_to_message_id,
+        ScheduledTask.updated_at,
+    ]
+
+    column_searchable_list: ClassVar = [
+        ScheduledTask.id,
+        ScheduledTask.chat_id,
+        ScheduledTask.query,
+        ScheduledTask.cron_expression,
+    ]
+
+    column_sortable_list: ClassVar = [
+        ScheduledTask.id,
+        ScheduledTask.chat_id,
+        ScheduledTask.enabled,
+        ScheduledTask.run_at,
+        ScheduledTask.updated_at,
+    ]
+
+    column_default_sort = ("updated_at", True)
+
+    can_create = True
+    can_edit = True
+    can_delete = True
+
+    form_excluded_columns: ClassVar = ["created_at", "updated_at"]
+
+
 class AdminAuth(AuthenticationBackend):
     async def login(self, request: Request) -> bool:
         form = await request.form()
         username, password = form["username"], form["password"]
 
-        if username == config.admin_username and password == config.admin_password:
+        if (
+            username == config.admin_username
+            and password == config.admin_password
+        ):
             request.session.update({"admin_auth": True})
             return True
         return False
@@ -418,6 +474,7 @@ def setup_admin(app, engine):
     admin.add_view(MessageAdmin)
     admin.add_view(EnrichedMessageAdmin)
     admin.add_view(MemoryAdmin)
+    admin.add_view(ScheduledTaskAdmin)
     admin.add_view(MCPServerAdmin)
 
     return admin

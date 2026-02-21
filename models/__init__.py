@@ -6,6 +6,7 @@ from .mcp_server import MCPServer
 from .memory import Memory
 from .message import Message
 from .messages_enriched import EnrichedMessage
+from .scheduled_task import ScheduledTask
 from .user import User
 
 __all__ = [
@@ -17,5 +18,6 @@ __all__ = [
     "Memory",
     "Message",
     "EnrichedMessage",
+    "ScheduledTask",
     "User",
 ]

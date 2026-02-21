@@ -1,16 +1,20 @@
-from Tools.get_current_time_tool import (
-    NAME as GET_CURRENT_TIME_NAME,
-    OPENAI_TOOL as GET_CURRENT_TIME_TOOL,
-    execute as execute_get_current_time,
-)
+from Tools.get_current_time_tool import NAME as GET_CURRENT_TIME_NAME
+from Tools.get_current_time_tool import OPENAI_TOOL as GET_CURRENT_TIME_TOOL
+from Tools.get_current_time_tool import execute as execute_get_current_time
 from Tools.get_message_content_by_number_tool import (
     NAME as GET_MESSAGE_CONTENT_NAME,
+)
+from Tools.get_message_content_by_number_tool import (
     OPENAI_TOOL as GET_MESSAGE_CONTENT_TOOL,
+)
+from Tools.get_message_content_by_number_tool import (
     execute as execute_get_message_content,
 )
+from Tools.get_user_information_by_id_tool import NAME as GET_USER_INFO_NAME
 from Tools.get_user_information_by_id_tool import (
-    NAME as GET_USER_INFO_NAME,
     OPENAI_TOOL as GET_USER_INFO_TOOL,
+)
+from Tools.get_user_information_by_id_tool import (
     execute as execute_get_user_info,
 )
 from Tools.memory_tools import (
@@ -24,6 +28,17 @@ from Tools.memory_tools import (
     get_user_memories,
     save_memory,
 )
+from Tools.scheduled_tasks_tools import (
+    CREATE_SCHEDULED_TASK_NAME,
+    CREATE_SCHEDULED_TASK_TOOL,
+    DELETE_SCHEDULED_TASK_NAME,
+    DELETE_SCHEDULED_TASK_TOOL,
+    EDIT_SCHEDULED_TASK_NAME,
+    EDIT_SCHEDULED_TASK_TOOL,
+    create_task,
+    delete_task,
+    edit_task,
+)
 
 BUILTIN_TOOLS = [
     GET_USER_INFO_TOOL,
@@ -32,6 +47,9 @@ BUILTIN_TOOLS = [
     SAVE_MEMORY_TOOL,
     GET_USER_MEMORIES_TOOL,
     GET_CHAT_MEMORIES_TOOL,
+    CREATE_SCHEDULED_TASK_TOOL,
+    EDIT_SCHEDULED_TASK_TOOL,
+    DELETE_SCHEDULED_TASK_TOOL,
 ]
 
 _EXECUTORS = {
@@ -41,6 +59,9 @@ _EXECUTORS = {
     SAVE_MEMORY_NAME: save_memory,
     GET_USER_MEMORIES_NAME: get_user_memories,
     GET_CHAT_MEMORIES_NAME: get_chat_memories,
+    CREATE_SCHEDULED_TASK_NAME: create_task,
+    EDIT_SCHEDULED_TASK_NAME: edit_task,
+    DELETE_SCHEDULED_TASK_NAME: delete_task,
 }
 
 
@@ -48,7 +69,11 @@ def get_builtin_tools() -> list[dict]:
     return BUILTIN_TOOLS
 
 
-async def execute_builtin_tool(context, function_name: str, arguments: dict) -> str | None:
+async def execute_builtin_tool(
+    context,
+    function_name: str,
+    arguments: dict,
+) -> str | None:
     handler = _EXECUTORS.get(function_name)
     if not handler:
         return None

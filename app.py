@@ -2,9 +2,6 @@ import logging
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-# pylint: disable=unused-import
-
-from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
@@ -16,6 +13,9 @@ from starlette.responses import Response
 # Setup logging first
 from logging_config import setup_logging
 
+# pylint: disable=unused-import
+
+
 setup_logging()
 
 # Telethon hook is automatically registered when imported
@@ -26,6 +26,11 @@ from config import config  # noqa: E402
 from dependency import dependency  # noqa: E402
 from jobs.fetch_messages import fetch_all_messages_job  # noqa: E402
 from jobs.sync_dialogs import sync_dialogs_job  # noqa: E402
+from scheduler_runtime import (  # noqa: E402
+    scheduler,
+    sync_scheduled_tasks,
+    sync_scheduled_tasks_job,
+)
 
 logger = logging.getLogger("app")
 
@@ -53,12 +58,23 @@ async def lifespan(_app: FastAPI):
     scheduler.add_job(
         fetch_all_messages_job,
         CronTrigger.from_crontab("1/10 * * * *"),
+        id="system_fetch_all_messages",
+        replace_existing=True,
     )
     scheduler.add_job(
         sync_dialogs_job,
         CronTrigger.from_crontab("3/10 * * * *"),
+        id="system_sync_dialogs",
+        replace_existing=True,
+    )
+    scheduler.add_job(
+        sync_scheduled_tasks_job,
+        CronTrigger.from_crontab("* * * * *"),
+        id="system_sync_scheduled_tasks",
+        replace_existing=True,
     )
     scheduler.start()
+    await sync_scheduled_tasks()
     await dependency.init_telegram_client()
 
     yield
@@ -70,7 +86,6 @@ async def lifespan(_app: FastAPI):
 
 
 app = FastAPI(title="Superchromia API", version="1.0.0", lifespan=lifespan)
-scheduler = AsyncIOScheduler()
 
 
 class HTTPSRedirectMiddleware(BaseHTTPMiddleware):

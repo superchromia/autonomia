@@ -232,7 +232,28 @@ async def process_message(session, chat_id: int, message_id: int) -> Message:
     await session.commit()
 
 
-async def _load_response_settings(session, chat_id: int) -> tuple[str, str]:
+def _normalize_generation_settings(chat_config: ChatConfig) -> dict:
+    max_tokens = int(chat_config.response_max_tokens or 450)
+    max_tokens = max(1, max_tokens)
+
+    temperature = float(chat_config.response_temperature or 0.85)
+    temperature = max(0.0, min(2.0, temperature))
+
+    presence_penalty = float(chat_config.response_presence_penalty or 0.2)
+    presence_penalty = max(0.0, presence_penalty)
+
+    frequency_penalty = float(chat_config.response_frequency_penalty or 0.2)
+    frequency_penalty = max(0.0, frequency_penalty)
+
+    return {
+        "max_tokens": max_tokens,
+        "temperature": temperature,
+        "presence_penalty": presence_penalty,
+        "frequency_penalty": frequency_penalty,
+    }
+
+
+async def _load_response_settings(session, chat_id: int) -> tuple[str, str, dict]:
     from sqlalchemy.future import select
 
     result = await session.execute(select(ChatConfig).where(ChatConfig.chat_id == chat_id))
@@ -244,7 +265,8 @@ async def _load_response_settings(session, chat_id: int) -> tuple[str, str]:
         raise ValueError(f"text_model not configured for chat_id={chat_id}")
     if not chat_config.system_prompt:
         raise ValueError(f"system_prompt not configured for chat_id={chat_id}")
-    return chat_config.text_model, chat_config.system_prompt
+    generation_settings = _normalize_generation_settings(chat_config)
+    return chat_config.text_model, chat_config.system_prompt, generation_settings
 
 
 async def _load_message_metadata(session, chat_id: int, message_id: int) -> tuple[int | None, str | None]:
@@ -333,7 +355,10 @@ async def generate_bot_response(session, chat_id: int, message_id: int) -> str |
     Generate a bot response to a message in a chat.
     Returns the response text or None if the bot should not respond.
     """
-    text_model, system_prompt = await _load_response_settings(session, chat_id)
+    text_model, system_prompt, generation_settings = await _load_response_settings(
+        session,
+        chat_id,
+    )
     context = await collect_message_context(
         session,
         chat_id=chat_id,
@@ -397,10 +422,10 @@ async def generate_bot_response(session, chat_id: int, message_id: int) -> str |
                     completion_kwargs = {
                         "model": text_model,
                         "messages": messages,
-                        "max_tokens": 450,
-                        "temperature": 0.85,
-                        "presence_penalty": 0.2,
-                        "frequency_penalty": 0.2,
+                        "max_tokens": generation_settings["max_tokens"],
+                        "temperature": generation_settings["temperature"],
+                        "presence_penalty": generation_settings["presence_penalty"],
+                        "frequency_penalty": generation_settings["frequency_penalty"],
                     }
                     if all_tools:
                         completion_kwargs["tools"] = all_tools

@@ -1,4 +1,12 @@
-from sqlalchemy import BigInteger, Boolean, Column, DateTime, Float, ForeignKey, String
+from sqlalchemy import (
+    BigInteger,
+    Boolean,
+    Column,
+    DateTime,
+    Float,
+    ForeignKey,
+    String,
+)
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import relationship
 
@@ -29,8 +37,32 @@ class ChatConfig(Base):
     )
     # Nebius AI model configuration
     text_model = Column(String, nullable=True, default="openai/gpt-oss-120b")
-    embeddings_model = Column(String, nullable=True, default="Qwen/Qwen3-Embedding-8B")
+    embeddings_model = Column(
+        String,
+        nullable=True,
+        default="Qwen/Qwen3-Embedding-8B",
+    )
     image_model = Column(String, nullable=True, default=None)
+    response_max_tokens = Column(
+        BigInteger,
+        nullable=False,
+        default=450,
+    )
+    response_temperature = Column(
+        Float,
+        nullable=False,
+        default=0.85,
+    )
+    response_presence_penalty = Column(
+        Float,
+        nullable=False,
+        default=0.2,
+    )
+    response_frequency_penalty = Column(
+        Float,
+        nullable=False,
+        default=0.2,
+    )
 
     # Relationships
     chat = relationship("Chat", back_populates="config")
