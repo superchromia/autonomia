@@ -1,3 +1,5 @@
+# pylint: disable=not-callable
+
 from sqlalchemy import (
     BigInteger,
     Boolean,
@@ -34,13 +36,13 @@ class ScheduledTask(Base):
     enabled = Column(Boolean, nullable=False, default=True, index=True)
     created_at = Column(
         DateTime(timezone=True),
-        server_default=func.now,  # type: ignore[arg-type]
+        server_default=func.now(),
         nullable=False,
     )
     updated_at = Column(
         DateTime(timezone=True),
-        server_default=func.now,  # type: ignore[arg-type]
-        onupdate=func.now,  # type: ignore[arg-type]
+        server_default=func.now(),
+        onupdate=func.now(),
         nullable=False,
     )
 
